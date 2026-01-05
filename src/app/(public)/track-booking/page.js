@@ -91,16 +91,16 @@ export default function TrackBookingPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 py-12 px-4">
       <div className="max-w-2xl mx-auto">
-        <div className="bg-white rounded-2xl shadow-xl p-8">
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold text-gray-900 mb-2">Track Your Booking</h1>
             <p className="text-gray-600">Enter your reference ID or phone number to view booking details</p>
             <Link 
               href="/"
-              className="inline-block mt-4 text-blue-600 hover:text-blue-700 font-medium"
+              className="inline-block mt-4 text-slate-700 hover:text-slate-900 font-medium transition-colors"
             >
               ← Back to Home
             </Link>
@@ -118,7 +118,7 @@ export default function TrackBookingPage() {
                 value={referenceId}
                 onChange={(e) => setReferenceId(e.target.value.toUpperCase())}
                 placeholder="BK12345678"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent uppercase"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all uppercase text-gray-900"
               />
             </div>
 
@@ -132,7 +132,7 @@ export default function TrackBookingPage() {
                 value={phone}
                 onChange={(e) => setPhone(e.target.value)}
                 placeholder="0771234567"
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900"
               />
             </div>
 
@@ -145,7 +145,7 @@ export default function TrackBookingPage() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              className="w-full bg-gradient-to-r from-slate-800 to-slate-900 text-white py-3 rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
               {loading ? (
                 <span className="flex items-center justify-center">

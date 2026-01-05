@@ -64,8 +64,8 @@ export default function InstitutionLoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex items-center justify-center p-4">
-      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-md border border-gray-100">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Institution Login</h1>
@@ -84,7 +84,7 @@ export default function InstitutionLoginPage() {
               value={formData.email}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900"
               placeholder="admin@institution.com"
             />
           </div>
@@ -100,7 +100,7 @@ export default function InstitutionLoginPage() {
               value={formData.password}
               onChange={handleInputChange}
               required
-              className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-4 py-3 border-2 border-gray-200 rounded-xl focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all text-gray-900"
               placeholder="Enter your password"
             />
           </div>
@@ -114,7 +114,7 @@ export default function InstitutionLoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+            className="w-full bg-gradient-to-r from-slate-800 to-slate-900 text-white py-3 rounded-xl font-semibold hover:from-slate-900 hover:to-black transition-all shadow-md disabled:bg-gray-400 disabled:cursor-not-allowed"
           >
             {loading ? (
               <span className="flex items-center justify-center">
@@ -132,14 +132,14 @@ export default function InstitutionLoginPage() {
 
         <div className="mt-6 text-center space-y-3">
           <p className="text-sm text-gray-600">
-            Don't have an account?{' '}
-            <Link href="/institution/register" className="text-blue-600 hover:text-blue-700 font-medium">
+            Don&apos;t have an account?{' '}
+            <Link href="/institution/register" className="text-slate-700 hover:text-slate-900 font-medium transition-colors">
               Register Institution
             </Link>
           </p>
           <Link 
             href="/"
-            className="block text-sm text-gray-500 hover:text-gray-700"
+            className="block text-sm text-gray-500 hover:text-gray-700 transition-colors"
           >
             ← Back to Home
           </Link>

@@ -7,8 +7,8 @@ import { useRouter } from 'next/navigation'
 export default function BookingSteps({ court, institutionId, availableSports }) {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
-  const [selectedSport, setSelectedSport] = useState(availableSports[0]?.id || null)
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
+  const [selectedSport, setSelectedSport] = useState(availableSports.length === 1 ? availableSports[0]?.id : null)
+  const [selectedDate, setSelectedDate] = useState('')
   const [slots, setSlots] = useState([])
   const [selectedSlots, setSelectedSlots] = useState([])
   const [loading, setLoading] = useState(false)
@@ -20,13 +20,6 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
     customerEmail: ''
   })
   const [error, setError] = useState('')
-
-  // Auto-select sport if only one available
-  useEffect(() => {
-    if (availableSports.length === 1 && !selectedSport) {
-      setSelectedSport(availableSports[0].id)
-    }
-  }, [availableSports, selectedSport])
 
   useEffect(() => {
     if (currentStep === 1 && selectedSport && selectedDate) {
@@ -251,26 +244,50 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
 
   const today = new Date().toISOString().split('T')[0]
   const sportName = availableSports.find(s => s.id === selectedSport)?.name
+  const showTimeSlots = selectedSport && selectedDate
 
   return (
-    <div className="bg-white rounded-lg shadow-sm border p-6">
-      {/* Progress Steps */}
+    <div className="bg-white rounded-2xl shadow-lg border border-gray-200 p-6">
+      {/* Progress Steps - Two Row Layout */}
       <div className="mb-8">
-        <div className="flex items-center justify-between mb-4">
-          <div className={`flex items-center ${currentStep >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+        {/* Top Row - Step Labels and Numbers */}
+        <div className="flex items-center justify-center gap-4 mb-3">
+          <div className={`flex flex-col items-center transition-all ${
+            currentStep >= 1 ? 'opacity-100' : 'opacity-50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 transition-all ${
+              currentStep >= 1 
+                ? 'bg-slate-800 text-white shadow-lg ring-4 ring-slate-200' 
+                : 'bg-gray-200 text-gray-500'
+            }`}>
               1
             </div>
-            <span className="ml-2 font-medium hidden sm:inline">Select Time</span>
+            <span className={`text-sm font-semibold ${
+              currentStep >= 1 ? 'text-gray-900' : 'text-gray-500'
+            }`}>Select Time</span>
           </div>
-          <div className="flex-1 h-1 mx-4 bg-gray-200">
-            <div className={`h-full transition-all ${currentStep >= 2 ? 'bg-blue-600 w-full' : 'w-0'}`}></div>
+
+          <div className="flex-1 max-w-[120px]">
+            <div className="h-1 bg-gray-200 rounded-full overflow-hidden">
+              <div className={`h-full bg-slate-800 transition-all duration-500 ${
+                currentStep >= 2 ? 'w-full' : 'w-0'
+              }`}></div>
+            </div>
           </div>
-          <div className={`flex items-center ${currentStep >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200'}`}>
+
+          <div className={`flex flex-col items-center transition-all ${
+            currentStep >= 2 ? 'opacity-100' : 'opacity-50'
+          }`}>
+            <div className={`w-12 h-12 rounded-full flex items-center justify-center font-bold text-lg mb-2 transition-all ${
+              currentStep >= 2 
+                ? 'bg-slate-800 text-white shadow-lg ring-4 ring-slate-200' 
+                : 'bg-gray-200 text-gray-500'
+            }`}>
               2
             </div>
-            <span className="ml-2 font-medium hidden sm:inline">Your Details</span>
+            <span className={`text-sm font-semibold ${
+              currentStep >= 2 ? 'text-gray-900' : 'text-gray-500'
+            }`}>Your Details</span>
           </div>
         </div>
       </div>
@@ -278,14 +295,14 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
       {/* Step 1: Time Selection */}
       {currentStep === 1 && (
         <div className="space-y-6">
-          <h2 className="text-xl font-semibold text-gray-900">Select Sport, Date & Time</h2>
+          <h2 className="text-2xl font-bold text-gray-900">Select Sport, Date & Time</h2>
 
           {/* Sport Selector */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Select Sport *
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Select Sport <span className="text-red-500">*</span>
             </label>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-3">
               {availableSports.map((sport) => (
                 <button
                   key={sport.id}
@@ -293,10 +310,10 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                     setSelectedSport(sport.id)
                     setSelectedSlots([])
                   }}
-                  className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  className={`px-5 py-2.5 rounded-lg font-semibold transition-all ${
                     selectedSport === sport.id
-                      ? 'bg-blue-600 text-white'
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                      ? 'bg-slate-800 text-white shadow-md ring-2 ring-slate-800 ring-offset-2'
+                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 hover:shadow'
                   }`}
                 >
                   {sport.name}
@@ -306,34 +323,34 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
           </div>
 
           {/* Date Selector */}
-          {selectedSport && (
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Date *
-              </label>
-              <div className="flex items-center justify-between bg-gray-50 p-4 rounded-lg">
-                <button
-                  onClick={() => handleDateChange(-1)}
-                  disabled={selectedDate <= today}
-                  className="p-2 hover:bg-white rounded-lg disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                </button>
-                
-                <div className="text-center">
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    min={today}
-                    onChange={(e) => {
-                      setSelectedDate(e.target.value)
-                      setSelectedSlots([])
-                    }}
-                    className="text-lg font-semibold border-none bg-transparent cursor-pointer"
-                  />
-                  <p className="text-sm text-gray-500">
+          <div>
+            <label className="block text-sm font-semibold text-gray-700 mb-3">
+              Select Date <span className="text-red-500">*</span>
+            </label>
+            <div className="flex items-center justify-between bg-gradient-to-r from-slate-50 to-gray-50 p-4 rounded-xl border border-gray-200">
+              <button
+                onClick={() => handleDateChange(-1)}
+                disabled={!selectedDate || selectedDate <= today}
+                className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                </svg>
+              </button>
+              
+              <div className="text-center">
+                <input
+                  type="date"
+                  value={selectedDate}
+                  min={today}
+                  onChange={(e) => {
+                    setSelectedDate(e.target.value)
+                    setSelectedSlots([])
+                  }}
+                  className="text-lg font-bold border-none bg-transparent cursor-pointer text-gray-900"
+                />
+                {selectedDate && (
+                  <p className="text-sm text-gray-600 mt-1">
                     {new Date(selectedDate).toLocaleDateString('en-US', { 
                       weekday: 'long', 
                       year: 'numeric', 
@@ -341,29 +358,38 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                       day: 'numeric' 
                     })}
                   </p>
-                </div>
-                
-                <button
-                  onClick={() => handleDateChange(1)}
-                  className="p-2 hover:bg-white rounded-lg transition-colors"
-                >
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </button>
+                )}
               </div>
+              
+              <button
+                onClick={() => handleDateChange(1)}
+                disabled={!selectedDate}
+                className="p-2 hover:bg-white rounded-lg disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+              >
+                <svg className="w-5 h-5 text-gray-700" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                </svg>
+              </button>
             </div>
-          )}
+          </div>
 
           {/* Time Slots */}
-          {selectedSport && selectedDate && (
+          {!showTimeSlots ? (
+            <div className="text-center py-12 bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl border-2 border-dashed border-gray-300">
+              <svg className="w-16 h-16 mx-auto text-gray-400 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+              </svg>
+              <p className="text-gray-600 font-medium">Please select a sport and date to view available time slots</p>
+            </div>
+          ) : (
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Select Time Slots * (Click consecutive slots)
+              <label className="block text-sm font-semibold text-gray-700 mb-3">
+                Select Time Slots <span className="text-red-500">*</span> (Click or drag consecutive slots)
               </label>
               {loading ? (
-                <div className="text-center py-8">
-                  <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+                <div className="text-center py-12">
+                  <div className="inline-block animate-spin rounded-full h-10 w-10 border-4 border-slate-200 border-t-slate-800"></div>
+                  <p className="text-gray-600 mt-3">Loading available slots...</p>
                 </div>
               ) : (
                 <>
@@ -379,12 +405,12 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                         onMouseDown={() => handleMouseDown(slot)}
                         onMouseEnter={() => handleMouseEnter(slot)}
                         disabled={slot.booked}
-                        className={`p-3 text-sm font-medium rounded-lg transition-all select-none ${
+                        className={`p-3 text-sm font-bold rounded-lg transition-all select-none ${
                           selectedSlots.find(s => s.time === slot.time)
-                            ? 'bg-blue-600 text-white ring-2 ring-blue-600 ring-offset-2'
+                            ? 'bg-slate-800 text-white ring-2 ring-slate-800 ring-offset-2 shadow-md'
                             : slot.booked
-                            ? 'bg-red-100 text-red-600 cursor-not-allowed line-through'
-                            : 'bg-green-50 text-green-700 hover:bg-green-100 border border-green-200'
+                            ? 'bg-red-100 text-red-600 cursor-not-allowed line-through opacity-60'
+                            : 'bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-300 hover:shadow'
                         }`}
                       >
                         {slot.displayTime}
@@ -395,16 +421,16 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                   {/* Legend */}
                   <div className="flex flex-wrap gap-4 text-sm mb-4">
                     <div className="flex items-center">
-                      <div className="w-4 h-4 bg-green-50 border border-green-200 rounded mr-2"></div>
-                      <span className="text-gray-600">Available</span>
+                      <div className="w-4 h-4 bg-green-50 border-2 border-green-300 rounded mr-2"></div>
+                      <span className="text-gray-700 font-medium">Available</span>
                     </div>
                     <div className="flex items-center">
-                      <div className="w-4 h-4 bg-blue-600 rounded mr-2"></div>
-                      <span className="text-gray-600">Selected</span>
+                      <div className="w-4 h-4 bg-slate-800 rounded mr-2"></div>
+                      <span className="text-gray-700 font-medium">Selected</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-4 h-4 bg-red-100 rounded mr-2"></div>
-                      <span className="text-gray-600">Booked</span>
+                      <span className="text-gray-700 font-medium">Booked</span>
                     </div>
                   </div>
                 </>
@@ -414,20 +440,20 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
 
           {/* Selection Summary - Only show when not dragging */}
           {selectedSlots.length > 0 && !isDragging && (
-            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <h3 className="font-semibold text-blue-900 mb-2">Selected Time</h3>
-              <div className="text-sm text-blue-800 space-y-1">
-                <p><span className="font-medium">Sport:</span> {sportName}</p>
-                <p><span className="font-medium">Date:</span> {new Date(selectedDate).toLocaleDateString()}</p>
-                <p><span className="font-medium">Time:</span> {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}</p>
-                <p><span className="font-medium">Duration:</span> {getTotalDuration()} minutes ({selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''})</p>
-                <p className="text-lg font-bold text-green-600 pt-2">Total: LKR {getTotalPrice().toFixed(2)}</p>
+            <div className="bg-gradient-to-r from-slate-50 to-gray-50 border-2 border-slate-200 rounded-xl p-5 shadow-sm">
+              <h3 className="font-bold text-gray-900 mb-3 text-lg">Selected Time</h3>
+              <div className="text-sm text-gray-700 space-y-2">
+                <p><span className="font-semibold">Sport:</span> {sportName}</p>
+                <p><span className="font-semibold">Date:</span> {new Date(selectedDate).toLocaleDateString()}</p>
+                <p><span className="font-semibold">Time:</span> {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}</p>
+                <p><span className="font-semibold">Duration:</span> {getTotalDuration()} minutes ({selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''})</p>
+                <p className="text-2xl font-bold text-green-600 pt-2">Total: LKR {getTotalPrice().toFixed(2)}</p>
               </div>
               <button
                 onClick={handleNextStep}
-                className="mt-4 w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                className="mt-4 w-full bg-slate-800 text-white px-6 py-3.5 rounded-lg font-bold hover:bg-slate-900 transition-all shadow-md hover:shadow-lg"
               >
-                Continue to Details
+                Continue to Details →
               </button>
             </div>
           )}
@@ -438,35 +464,38 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
       {currentStep === 2 && (
         <div className="space-y-6">
           <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-gray-900">Enter Your Details</h2>
+            <h2 className="text-2xl font-bold text-gray-900">Enter Your Details</h2>
             <button
               onClick={() => setCurrentStep(1)}
-              className="text-blue-600 hover:text-blue-700 text-sm font-medium"
+              className="text-slate-800 hover:text-slate-900 text-sm font-semibold flex items-center gap-1"
             >
-              ← Back to Time Selection
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+              </svg>
+              Back to Time Selection
             </button>
           </div>
 
           {/* Booking Summary */}
-          <div className="bg-gray-50 rounded-lg p-4">
-            <h3 className="font-semibold text-gray-900 mb-2">Booking Summary</h3>
-            <div className="text-sm text-gray-600 space-y-1">
-              <p><span className="font-medium">Court:</span> {court.name}</p>
-              <p><span className="font-medium">Sport:</span> {sportName}</p>
-              <p><span className="font-medium">Date:</span> {new Date(selectedDate).toLocaleDateString()}</p>
-              <p><span className="font-medium">Time:</span> {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}</p>
-              <p><span className="font-medium">Duration:</span> {getTotalDuration()} minutes</p>
+          <div className="bg-gradient-to-r from-slate-50 to-gray-50 rounded-xl p-5 border border-gray-200">
+            <h3 className="font-bold text-gray-900 mb-3">Booking Summary</h3>
+            <div className="text-sm text-gray-700 space-y-2">
+              <p><span className="font-semibold">Court:</span> {court.name}</p>
+              <p><span className="font-semibold">Sport:</span> {sportName}</p>
+              <p><span className="font-semibold">Date:</span> {new Date(selectedDate).toLocaleDateString()}</p>
+              <p><span className="font-semibold">Time:</span> {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}</p>
+              <p><span className="font-semibold">Duration:</span> {getTotalDuration()} minutes</p>
             </div>
-            <div className="mt-3 pt-3 border-t">
-              <p className="text-lg font-bold text-green-600">Total: LKR {getTotalPrice().toFixed(2)}</p>
+            <div className="mt-3 pt-3 border-t border-gray-300">
+              <p className="text-2xl font-bold text-green-600">Total: LKR {getTotalPrice().toFixed(2)}</p>
             </div>
           </div>
 
           {/* Customer Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 mb-1">
-                Full Name *
+              <label htmlFor="customerName" className="block text-sm font-semibold text-gray-700 mb-2">
+                Full Name <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -474,14 +503,14 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                 required
                 value={formData.customerName}
                 onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all"
                 placeholder="Enter your name"
               />
             </div>
 
             <div>
-              <label htmlFor="customerPhone" className="block text-sm font-medium text-gray-700 mb-1">
-                Phone Number *
+              <label htmlFor="customerPhone" className="block text-sm font-semibold text-gray-700 mb-2">
+                Phone Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
@@ -489,13 +518,13 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                 required
                 value={formData.customerPhone}
                 onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all"
                 placeholder="Enter your phone number"
               />
             </div>
 
             <div>
-              <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="customerEmail" className="block text-sm font-semibold text-gray-700 mb-2">
                 Email (Optional)
               </label>
               <input
@@ -503,13 +532,13 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
                 id="customerEmail"
                 value={formData.customerEmail}
                 onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
-                className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:ring-2 focus:ring-slate-500 focus:border-slate-500 transition-all"
                 placeholder="Enter your email"
               />
             </div>
 
             {error && (
-              <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
+              <div className="bg-red-50 border-2 border-red-200 text-red-700 px-4 py-3 rounded-lg text-sm font-medium">
                 {error}
               </div>
             )}
@@ -517,7 +546,7 @@ export default function BookingSteps({ court, institutionId, availableSports }) 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              className="w-full bg-slate-800 text-white px-6 py-3.5 rounded-lg font-bold hover:bg-slate-900 transition-all shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'Processing...' : 'Confirm Booking'}
             </button>

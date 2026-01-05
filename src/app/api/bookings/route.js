@@ -24,54 +24,40 @@ export async function POST(request) {
 
     const supabase = await createClient()
 
-    // 2. Check Availability
-    const { data: isAvailable } = await supabase.rpc('check_slot_available', {
+    // 2. Use atomic booking function for concurrent safety
+    const { data, error } = await supabase.rpc('create_booking_atomic', {
       p_court_id: courtId,
+      p_institution_id: institutionId,
       p_booking_date: bookingDate,
       p_start_time: startTime,
-      p_end_time: endTime
+      p_end_time: endTime,
+      p_sport_id: sportId,
+      p_total_price: totalPrice,
+      p_customer_name: customerName,
+      p_customer_phone: customerPhone,
+      p_customer_email: customerEmail || null
     })
-
-    if (!isAvailable) {
-      return NextResponse.json({ error: 'Selected time slot is no longer available' }, { status: 409 })
-    }
-
-    // 3. GENERATE REFERENCE ID MANUALLY
-    // This allows us to return it to the user without needing 'SELECT' permissions
-    const myReferenceId = 'BK' + Math.floor(Math.random() * 100000000).toString().padStart(8, '0');
-
-    // 4. Create Booking (NO .select())
-    const { error } = await supabase
-      .from('bookings')
-      .insert({
-        court_id: courtId,
-        institution_id: institutionId,
-        booking_date: bookingDate,
-        start_time: startTime,
-        end_time: endTime,
-        sport_id: sportId, 
-        total_price: totalPrice,
-        customer_name: customerName,
-        customer_phone: customerPhone,
-        customer_email: customerEmail || null,
-        status: 'confirmed',
-        reference_id: myReferenceId 
-      })
-
 
     if (error) {
       console.error('Booking error:', error)
       return NextResponse.json({ error: error.message }, { status: 500 })
     }
 
-    // 5. Success
+    // 3. Check if booking was successful
+    const result = data[0]
+    if (!result.success) {
+      return NextResponse.json({ 
+        error: result.error_message || 'Selected time slot is no longer available' 
+      }, { status: 409 })
+    }
+
+    // 4. Success
     return NextResponse.json({
       success: true,
-      referenceId: myReferenceId,
-      // We cannot return the full 'booking' object because we didn't fetch it, 
-      // but we can return the data we just sent.
+      referenceId: result.reference_id,
+      bookingId: result.booking_id,
       booking: { 
-        reference_id: myReferenceId,
+        reference_id: result.reference_id,
         booking_date: bookingDate,
         start_time: startTime 
       } 

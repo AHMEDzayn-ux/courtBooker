@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 
@@ -12,9 +12,17 @@ export default function BookingsPage() {
   const [filter, setFilter] = useState('all') // all, upcoming, past
   const [statusFilter, setStatusFilter] = useState('all') // all, confirmed, cancelled
   const [searchTerm, setSearchTerm] = useState('')
+  const channelRef = useRef(null)
 
   useEffect(() => {
     fetchBookings()
+    
+    // Cleanup real-time subscription on unmount
+    return () => {
+      if (channelRef.current) {
+        channelRef.current.unsubscribe()
+      }
+    }
   }, [filter, statusFilter])
 
   const fetchBookings = async () => {
@@ -40,10 +48,47 @@ export default function BookingsPage() {
         .eq('id', user.id)
         .single()
       
-      setInstitutionId(adminData?.institution_id)
+      const instId = adminData?.institution_id
+      setInstitutionId(instId)
+
+      // Set up real-time subscription for this institution
+      if (instId) {
+        setupRealtimeSubscription(supabase, instId)
+      }
     }
 
     setLoading(false)
+  }
+
+  const setupRealtimeSubscription = (supabase, instId) => {
+    // Remove existing subscription if any
+    if (channelRef.current) {
+      channelRef.current.unsubscribe()
+    }
+
+    // Create new channel for this institution's bookings
+    const channel = supabase
+      .channel(`institution_bookings:${instId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'bookings',
+          filter: `institution_id=eq.${instId}`
+        },
+        (payload) => {
+          console.log('Real-time booking change:', payload)
+          
+          // Refresh bookings when any change occurs
+          fetchBookings()
+        }
+      )
+      .subscribe((status) => {
+        console.log('Dashboard real-time subscription:', status)
+      })
+
+    channelRef.current = channel
   }
 
   const handleCancelBooking = async (bookingId) => {

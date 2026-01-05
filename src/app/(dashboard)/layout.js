@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Home } from 'lucide-react'
 
 export default function DashboardLayout({ children }) {
   const router = useRouter()
@@ -59,20 +60,25 @@ export default function DashboardLayout({ children }) {
   return (
     <div className="min-h-screen bg-gray-50">
       {/* Top Navigation */}
-      <nav className="bg-white shadow-sm">
+      <nav className="bg-white shadow-sm fixed top-0 left-0 right-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-16">
-            <div className="flex items-center">
-              <h1 className="text-xl font-bold text-gray-900">{institution?.name}</h1>
-              {!institution?.is_verified && (
-                <span className="ml-3 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
-                  Pending Verification
-                </span>
-              )}
+            <div className="flex items-center gap-6">
+              <Link href="/" className="flex items-center gap-2 text-gray-900 hover:text-indigo-600 transition-colors" title="Go to Home">
+                <Home className="w-5 h-5" />
+              </Link>
+              <div className="flex items-center">
+                <h1 className="text-xl font-bold text-gray-900">{institution?.name}</h1>
+                {!institution?.is_verified && (
+                  <span className="ml-3 px-2 py-1 text-xs bg-yellow-100 text-yellow-800 rounded-full">
+                    Pending Verification
+                  </span>
+                )}
+              </div>
             </div>
             
             <div className="flex items-center space-x-4">
-              <Link href="/" className="text-gray-600 hover:text-gray-900">
+              <Link href="/" className="text-gray-600 hover:text-gray-900 font-medium">
                 View Site
               </Link>
               <button
@@ -86,9 +92,9 @@ export default function DashboardLayout({ children }) {
         </div>
       </nav>
 
-      <div className="flex">
+      <div className="flex pt-16">
         {/* Sidebar */}
-        <aside className="w-64 bg-white shadow-sm min-h-[calc(100vh-4rem)]">
+        <aside className="w-64 bg-white shadow-sm min-h-[calc(100vh-4rem)] fixed left-0 top-16">
           <nav className="p-4 space-y-2">
             <Link
               href="/dashboard"
@@ -118,7 +124,7 @@ export default function DashboardLayout({ children }) {
         </aside>
 
         {/* Main Content */}
-        <main className="flex-1 p-8">
+        <main className="flex-1 p-8 ml-64">
           {children}
         </main>
       </div>
