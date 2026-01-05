@@ -4,10 +4,11 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/lib/supabase/client'
 import BookingModal from './BookingModal'
 
-export default function TimeSlotSelector({ court, institutionId }) {
+export default function TimeSlotSelector({ court, institutionId, availableSports }) {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0])
   const [slots, setSlots] = useState([])
   const [selectedSlots, setSelectedSlots] = useState([])
+  const [selectedSport, setSelectedSport] = useState(availableSports[0]?.id || null)
   const [loading, setLoading] = useState(false)
   const [showBookingModal, setShowBookingModal] = useState(false)
 
@@ -93,6 +94,11 @@ export default function TimeSlotSelector({ court, institutionId }) {
     return selectedSlots.length * court.slot_duration_minutes
   }
 
+  const getTotalPrice = () => {
+    const pricePerSlot = court.price_per_slot || 0
+    return selectedSlots.length * pricePerSlot
+  }
+
   const getStartTime = () => {
     return selectedSlots[0]?.time || ''
   }
@@ -111,7 +117,31 @@ export default function TimeSlotSelector({ court, institutionId }) {
 
   return (
     <div className="bg-white rounded-lg shadow-sm border p-6">
-      <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Date & Time</h2>
+      <h2 className="text-lg font-semibold text-gray-900 mb-4">Select Sport, Date & Time</h2>
+
+      {/* Sport Selector */}
+      {availableSports.length > 1 && (
+        <div className="mb-6">
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Select Sport *
+          </label>
+          <div className="flex flex-wrap gap-2">
+            {availableSports.map((sport) => (
+              <button
+                key={sport.id}
+                onClick={() => setSelectedSport(sport.id)}
+                className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+                  selectedSport === sport.id
+                    ? 'bg-blue-600 text-white'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
+              >
+                {sport.name}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Date Selector */}
       <div className="flex items-center justify-between mb-6 bg-gray-50 p-4 rounded-lg">
@@ -201,8 +231,8 @@ export default function TimeSlotSelector({ court, institutionId }) {
           {/* Booking Summary */}
           {selectedSlots.length > 0 && (
             <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-              <div className="flex items-center justify-between">
-                <div>
+              <div className="flex items-center justify-between flex-wrap gap-4">
+                <div className="flex-1 min-w-[200px]">
                   <p className="text-sm text-blue-600 font-medium mb-1">Selected Time</p>
                   <p className="text-lg font-semibold text-blue-900">
                     {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}
@@ -210,10 +240,14 @@ export default function TimeSlotSelector({ court, institutionId }) {
                   <p className="text-sm text-blue-700">
                     Duration: {getTotalDuration()} minutes ({selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''})
                   </p>
+                  <p className="text-xl font-bold text-green-600 mt-2">
+                    Total: LKR {getTotalPrice().toFixed(2)}
+                  </p>
                 </div>
                 <button
                   onClick={() => setShowBookingModal(true)}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+                  disabled={!selectedSport}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Book Now
                 </button>
@@ -231,6 +265,9 @@ export default function TimeSlotSelector({ court, institutionId }) {
           bookingDate={selectedDate}
           startTime={getStartTime()}
           endTime={getEndTime()}
+          selectedSportId={selectedSport}
+          selectedSportName={availableSports.find(s => s.id === selectedSport)?.name}
+          totalPrice={getTotalPrice()}
           onClose={() => setShowBookingModal(false)}
           onSuccess={() => {
             setSelectedSlots([])

@@ -19,6 +19,7 @@ export default async function InstitutionPage({ params }) {
         opening_time,
         closing_time,
         slot_duration_minutes,
+        price_per_slot,
         court_sports (
           sports (
             id,

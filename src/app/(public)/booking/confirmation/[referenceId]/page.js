@@ -10,6 +10,9 @@ export default async function BookingConfirmationPage({ params }) {
     .from('bookings')
     .select(`
       *,
+      sports (
+        name
+      ),
       courts (
         name,
         institutions (
@@ -63,6 +66,10 @@ export default async function BookingConfirmationPage({ params }) {
               <p className="font-medium text-gray-900">{booking.courts.name}</p>
             </div>
             <div>
+              <p className="text-sm text-gray-500">Sport</p>
+              <p className="font-medium text-gray-900">{booking.sports?.name || 'N/A'}</p>
+            </div>
+            <div>
               <p className="text-sm text-gray-500">Date</p>
               <p className="font-medium text-gray-900">
                 {new Date(booking.booking_date).toLocaleDateString('en-US', { 
@@ -78,6 +85,10 @@ export default async function BookingConfirmationPage({ params }) {
               <p className="font-medium text-gray-900">
                 {booking.start_time.substring(0, 5)} - {booking.end_time.substring(0, 5)}
               </p>
+            </div>
+            <div>
+              <p className="text-sm text-gray-500">Total Amount</p>
+              <p className="font-medium text-green-600 text-lg">LKR {booking.total_price?.toFixed(2) || '0.00'}</p>
             </div>
             <div>
               <p className="text-sm text-gray-500">Customer Name</p>

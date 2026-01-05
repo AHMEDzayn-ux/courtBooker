@@ -35,7 +35,7 @@ export default function CourtSelector({ courts, institutionId }) {
         {/* Selected Court Info */}
         {selectedCourt && (
           <div className="mt-4 pt-4 border-t">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
               <div>
                 <span className="text-gray-500">Opening Hours:</span>
                 <p className="font-medium">
@@ -45,6 +45,10 @@ export default function CourtSelector({ courts, institutionId }) {
               <div>
                 <span className="text-gray-500">Slot Duration:</span>
                 <p className="font-medium">{selectedCourt.slot_duration_minutes} minutes</p>
+              </div>
+              <div>
+                <span className="text-gray-500">Price per Slot:</span>
+                <p className="font-medium text-green-600">LKR {selectedCourt.price_per_slot?.toFixed(2) || '0.00'}</p>
               </div>
               <div>
                 <span className="text-gray-500">Sports Available:</span>
@@ -69,6 +73,7 @@ export default function CourtSelector({ courts, institutionId }) {
         <TimeSlotSelector 
           court={selectedCourt}
           institutionId={institutionId}
+          availableSports={sports}
         />
       )}
     </div>

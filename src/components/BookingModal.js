@@ -3,7 +3,18 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 
-export default function BookingModal({ court, institutionId, bookingDate, startTime, endTime, onClose, onSuccess }) {
+export default function BookingModal({ 
+  court, 
+  institutionId, 
+  bookingDate, 
+  startTime, 
+  endTime, 
+  selectedSportId,
+  selectedSportName,
+  totalPrice,
+  onClose, 
+  onSuccess 
+}) {
   const router = useRouter()
   const [formData, setFormData] = useState({
     customerName: '',
@@ -30,6 +41,8 @@ export default function BookingModal({ court, institutionId, bookingDate, startT
           bookingDate,
           startTime,
           endTime,
+          sportId: selectedSportId,
+          totalPrice,
           ...formData
         }),
       })
@@ -68,8 +81,12 @@ export default function BookingModal({ court, institutionId, bookingDate, startT
           <h3 className="font-semibold text-gray-900 mb-2">Booking Details</h3>
           <div className="space-y-1 text-sm text-gray-600">
             <p><span className="font-medium">Court:</span> {court.name}</p>
+            <p><span className="font-medium">Sport:</span> {selectedSportName}</p>
             <p><span className="font-medium">Date:</span> {new Date(bookingDate).toLocaleDateString()}</p>
             <p><span className="font-medium">Time:</span> {startTime.substring(0, 5)} - {endTime.substring(0, 5)}</p>
+          </div>
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-lg font-bold text-green-600">Total: LKR {totalPrice.toFixed(2)}</p>
           </div>
         </div>
 
