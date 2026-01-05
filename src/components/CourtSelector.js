@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import TimeSlotSelector from './TimeSlotSelector'
+import BookingSteps from './BookingSteps'
 
 export default function CourtSelector({ courts, institutionId }) {
   const [selectedCourtId, setSelectedCourtId] = useState(courts[0]?.id || null)
@@ -68,9 +68,9 @@ export default function CourtSelector({ courts, institutionId }) {
         )}
       </div>
 
-      {/* Time Slot Selector */}
+      {/* Booking Steps */}
       {selectedCourt && (
-        <TimeSlotSelector 
+        <BookingSteps 
           court={selectedCourt}
           institutionId={institutionId}
           availableSports={sports}

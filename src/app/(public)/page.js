@@ -82,12 +82,20 @@ export default async function HomePage({ searchParams }) {
             <p className="text-xl mb-8 text-blue-100">
               Find and book badminton, futsal, cricket courts and more
             </p>
-            <Link 
-              href="/institution/register"
-              className="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
-            >
-              Register Your Institution
-            </Link>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link 
+                href="/track-booking"
+                className="inline-block bg-white text-blue-600 px-6 py-3 rounded-lg font-semibold hover:bg-blue-50 transition-colors"
+              >
+                Track Your Booking
+              </Link>
+              <Link 
+                href="/institution/register"
+                className="inline-block bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors border-2 border-white"
+              >
+                Register Your Institution
+              </Link>
+            </div>
           </div>
         </div>
       </div>

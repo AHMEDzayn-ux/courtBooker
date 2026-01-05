@@ -1,33 +1,61 @@
-import { createClient } from '@/lib/supabase/server'
+'use client'
+
+import { useEffect, useState } from 'react'
+import { createClient } from '@/lib/supabase/client'
 import Link from 'next/link'
-import { notFound } from 'next/navigation'
+import { useParams, useRouter } from 'next/navigation'
+import DownloadReceiptButton from '@/components/DownloadReceiptButton'
 
-export default async function BookingConfirmationPage({ params }) {
-  const { referenceId } = await params
-  const supabase = await createClient()
+export default function BookingConfirmationPage() {
+  const params = useParams()
+  const router = useRouter()
+  const [booking, setBooking] = useState(null)
+  const [loading, setLoading] = useState(true)
+  
+  useEffect(() => {
+    const fetchBooking = async () => {
+      const supabase = createClient()
 
-  const { data: booking, error } = await supabase
-    .from('bookings')
-    .select(`
-      *,
-      sports (
-        name
-      ),
-      courts (
-        name,
-        institutions (
-          name,
-          contact_number,
-          address
-        )
-      )
-    `)
-    .eq('reference_id', referenceId)
-    .single()
+      const { data, error } = await supabase
+        .from('bookings')
+        .select(`
+          *,
+          sports (
+            name
+          ),
+          courts (
+            name,
+            institutions (
+              name,
+              contact_number,
+              address
+            )
+          )
+        `)
+        .eq('reference_id', params.referenceId)
+        .single()
 
-  if (error || !booking) {
-    notFound()
+      if (error || !data) {
+        router.push('/')
+        return
+      }
+
+      setBooking(data)
+      setLoading(false)
+    }
+
+    fetchBooking()
+  }, [params.referenceId, router])
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      </div>
+    )
   }
+
+  if (!booking) return null
 
   return (
     <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
@@ -46,7 +74,21 @@ export default async function BookingConfirmationPage({ params }) {
         {/* Reference ID */}
         <div className="bg-blue-50 border-2 border-blue-200 rounded-lg p-6 mb-6">
           <p className="text-sm text-blue-600 font-medium mb-1">Your Booking Reference</p>
-          <p className="text-3xl font-bold text-blue-900 tracking-wider">{booking.reference_id}</p>
+          <div className="flex items-center justify-between gap-4">
+            <p className="text-3xl font-bold text-blue-900 tracking-wider">{booking.reference_id}</p>
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(booking.reference_id)
+                alert('Reference ID copied to clipboard!')
+              }}
+              className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium"
+            >
+              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z" />
+              </svg>
+              Copy
+            </button>
+          </div>
           <p className="text-sm text-blue-700 mt-2">
             Save this reference ID to track your booking
           </p>
@@ -121,19 +163,23 @@ export default async function BookingConfirmationPage({ params }) {
         </div>
 
         {/* Actions */}
-        <div className="flex flex-col sm:flex-row gap-3">
-          <Link
-            href="/"
-            className="flex-1 text-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-          >
-            Back to Home
-          </Link>
-          <Link
-            href="/track-booking"
-            className="flex-1 text-center border border-gray-300 px-6 py-3 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
-          >
-            Track Booking
-          </Link>
+        <div className="flex flex-col gap-3">
+          <DownloadReceiptButton booking={booking} />
+          
+          <div className="flex flex-col sm:flex-row gap-3">
+            <Link
+              href="/"
+              className="flex-1 text-center bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            >
+              Back to Home
+            </Link>
+            <Link
+              href="/track-booking"
+              className="flex-1 text-center border border-gray-300 px-6 py-3 rounded-lg font-semibold text-gray-700 hover:bg-gray-50 transition-colors"
+            >
+              Track Booking
+            </Link>
+          </div>
         </div>
       </div>
     </div>

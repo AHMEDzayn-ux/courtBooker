@@ -55,9 +55,9 @@ export async function POST(request) {
         customer_phone: customerPhone,
         customer_email: customerEmail || null,
         status: 'confirmed',
-        reference_id: myReferenceId // <--- Sending our manual ID
+        reference_id: myReferenceId 
       })
-      // ❌ REMOVED: .select().single()
+
 
     if (error) {
       console.error('Booking error:', error)
