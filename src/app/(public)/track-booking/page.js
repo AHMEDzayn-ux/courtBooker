@@ -37,7 +37,6 @@ export default function TrackBookingPage() {
             institutions (name)
           )
         `)
-        .eq('status', 'confirmed')
         .order('booking_date', { ascending: false })
         .order('start_time', { ascending: false })
 

@@ -90,10 +90,16 @@ export default async function HomePage({ searchParams }) {
                 Track Your Booking
               </Link>
               <Link 
-                href="/institution/register"
+                href="/institution/login"
                 className="inline-block bg-blue-700 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-600 transition-colors border-2 border-white"
               >
-                Register Your Institution
+                Institution Login
+              </Link>
+              <Link 
+                href="/institution/register"
+                className="inline-block bg-transparent text-white px-6 py-3 rounded-lg font-semibold hover:bg-white hover:text-blue-600 transition-colors border-2 border-white"
+              >
+                Register Institution
               </Link>
             </div>
           </div>
