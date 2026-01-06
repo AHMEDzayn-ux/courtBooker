@@ -1,162 +1,154 @@
-'use client'
+"use client";
 
-import { useEffect, useState } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import dynamic from 'next/dynamic'
-
-const MapPicker = dynamic(() => import('@/components/MapPicker'), { 
-  ssr: false,
-  loading: () => <div className="w-full h-96 bg-gray-100 rounded-lg flex items-center justify-center">Loading map...</div>
-})
+import { useEffect, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 export default function SettingsPage() {
-  const router = useRouter()
-  const [loading, setLoading] = useState(true)
-  const [saving, setSaving] = useState(false)
+  const router = useRouter();
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
-    name: '',
-    district: '',
-    address: '',
-    latitude: 7.8731,
-    longitude: 80.7718,
-    contact_number: '',
-    email: '',
-    images: []
-  })
-  const [newImages, setNewImages] = useState([])
-  const [previewImages, setPreviewImages] = useState([])
+    name: "",
+    district: "",
+    address: "",
+    google_maps_link: "",
+    contact_number: "",
+    email: "",
+    images: [],
+  });
+  const [newImages, setNewImages] = useState([]);
+  const [previewImages, setPreviewImages] = useState([]);
 
   useEffect(() => {
-    fetchInstitution()
-  }, [])
+    fetchInstitution();
+  }, []);
 
   const fetchInstitution = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
 
     if (!user) {
-      router.push('/institution/login')
-      return
+      router.push("/institution/login");
+      return;
     }
 
     try {
-      const response = await fetch('/api/institutions/update')
-      const data = await response.json()
+      const response = await fetch("/api/institutions/update");
+      const data = await response.json();
 
       if (response.ok && data.institution) {
         setFormData({
           name: data.institution.name,
           district: data.institution.district,
           address: data.institution.address,
-          latitude: data.institution.latitude || 7.8731,
-          longitude: data.institution.longitude || 80.7718,
+          google_maps_link: data.institution.google_maps_link || "",
           contact_number: data.institution.contact_number,
           email: data.institution.email,
-          images: data.institution.images || []
-        })
+          images: data.institution.images || [],
+        });
       }
     } catch (error) {
-      console.error('Error:', error)
+      console.error("Error:", error);
     }
 
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({
+    const { name, value } = e.target;
+    setFormData((prev) => ({
       ...prev,
-      [name]: value
-    }))
-  }
-
-  const handleLocationSelect = (lat, lng) => {
-    setFormData(prev => ({
-      ...prev,
-      latitude: lat,
-      longitude: lng
-    }))
-  }
+      [name]: value,
+    }));
+  };
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files)
-    setNewImages(files)
+    const files = Array.from(e.target.files);
+    setNewImages(files);
 
     // Create preview URLs
-    const previews = files.map(file => URL.createObjectURL(file))
-    setPreviewImages(previews)
-  }
+    const previews = files.map((file) => URL.createObjectURL(file));
+    setPreviewImages(previews);
+  };
 
   const removeExistingImage = (indexToRemove) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
-      images: prev.images.filter((_, index) => index !== indexToRemove)
-    }))
-  }
+      images: prev.images.filter((_, index) => index !== indexToRemove),
+    }));
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setSaving(true)
+    e.preventDefault();
+    setSaving(true);
 
     try {
-      const submitData = new FormData()
-      submitData.append('name', formData.name)
-      submitData.append('district', formData.district)
-      submitData.append('address', formData.address)
-      submitData.append('latitude', formData.latitude)
-      submitData.append('longitude', formData.longitude)
-      submitData.append('contact_number', formData.contact_number)
-      submitData.append('email', formData.email)
-      submitData.append('existingImages', JSON.stringify(formData.images))
+      const submitData = new FormData();
+      submitData.append("name", formData.name);
+      submitData.append("district", formData.district);
+      submitData.append("address", formData.address);
+      submitData.append("google_maps_link", formData.google_maps_link);
+      submitData.append("contact_number", formData.contact_number);
+      submitData.append("email", formData.email);
+      submitData.append("existingImages", JSON.stringify(formData.images));
 
       // Append new images
-      newImages.forEach(image => {
-        submitData.append('newImages', image)
-      })
+      newImages.forEach((image) => {
+        submitData.append("newImages", image);
+      });
 
-      const response = await fetch('/api/institutions/update', {
-        method: 'PUT',
-        body: submitData
-      })
+      const response = await fetch("/api/institutions/update", {
+        method: "PUT",
+        body: submitData,
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (response.ok) {
-        alert('Settings updated successfully!')
+        alert("Settings updated successfully!");
         // Clear new images
-        setNewImages([])
-        setPreviewImages([])
+        setNewImages([]);
+        setPreviewImages([]);
         // Refresh data
-        fetchInstitution()
+        fetchInstitution();
       } else {
-        alert(result.error || 'Failed to update settings')
+        alert(result.error || "Failed to update settings");
       }
     } catch (error) {
-      console.error('Error:', error)
-      alert('An error occurred while updating settings')
+      console.error("Error:", error);
+      alert("An error occurred while updating settings");
     }
 
-    setSaving(false)
-  }
+    setSaving(false);
+  };
 
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen">
         <div className="text-gray-600">Loading...</div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="p-6">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-gray-900 mb-6">Institution Settings</h1>
+        <h1 className="text-3xl font-bold text-gray-900 mb-6">
+          Institution Settings
+        </h1>
 
-        <form onSubmit={handleSubmit} className="bg-white rounded-lg shadow p-6 space-y-6">
+        <form
+          onSubmit={handleSubmit}
+          className="bg-white rounded-lg shadow p-6 space-y-6"
+        >
           {/* Basic Information */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Basic Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Basic Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -168,7 +160,7 @@ export default function SettingsPage() {
                   value={formData.name}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -182,7 +174,7 @@ export default function SettingsPage() {
                   value={formData.district}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                 />
               </div>
             </div>
@@ -190,7 +182,9 @@ export default function SettingsPage() {
 
           {/* Contact Information */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Contact Information</h2>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Contact Information
+            </h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -202,7 +196,7 @@ export default function SettingsPage() {
                   value={formData.contact_number}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                 />
               </div>
 
@@ -216,7 +210,7 @@ export default function SettingsPage() {
                   value={formData.email}
                   onChange={handleInputChange}
                   required
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
                 />
               </div>
             </div>
@@ -233,33 +227,37 @@ export default function SettingsPage() {
               onChange={handleInputChange}
               required
               rows="3"
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900"
             />
           </div>
 
-          {/* Location Picker */}
+          {/* Google Maps Link */}
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Location on Map *
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Google Maps Link
             </label>
-            <p className="text-sm text-gray-500 mb-3">
-              Click or drag the marker to set your location. Coordinates: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
-            </p>
-            <MapPicker
-              initialLat={formData.latitude}
-              initialLng={formData.longitude}
-              onLocationSelect={handleLocationSelect}
+            <input
+              type="url"
+              name="google_maps_link"
+              value={formData.google_maps_link}
+              onChange={handleInputChange}
+              placeholder="Paste your Google Maps location link here"
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-gray-900 placeholder:text-gray-400"
             />
           </div>
 
           {/* Images */}
           <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Institution Images</h2>
-            
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">
+              Institution Images
+            </h2>
+
             {/* Current Images */}
             {formData.images.length > 0 && (
               <div className="mb-4">
-                <p className="text-sm font-medium text-gray-700 mb-2">Current Images</p>
+                <p className="text-sm font-medium text-gray-700 mb-2">
+                  Current Images
+                </p>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {formData.images.map((image, index) => (
                     <div key={index} className="relative">
@@ -273,8 +271,18 @@ export default function SettingsPage() {
                         onClick={() => removeExistingImage(index)}
                         className="absolute top-2 right-2 bg-red-600 text-white rounded-full p-1 hover:bg-red-700"
                       >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                        <svg
+                          className="w-4 h-4"
+                          fill="none"
+                          stroke="currentColor"
+                          viewBox="0 0 24 24"
+                        >
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth="2"
+                            d="M6 18L18 6M6 6l12 12"
+                          />
                         </svg>
                       </button>
                     </div>
@@ -285,22 +293,34 @@ export default function SettingsPage() {
 
             {/* New Images */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
                 Add New Images
               </label>
               <input
+                id="imageUpload"
                 type="file"
                 accept="image/*"
                 multiple
                 onChange={handleImageChange}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                className="hidden"
               />
-              <p className="text-sm text-gray-500 mt-1">You can select multiple images</p>
+              <button
+                type="button"
+                onClick={() => document.getElementById("imageUpload").click()}
+                className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-medium"
+              >
+                Choose Images
+              </button>
+              <p className="text-sm text-gray-500 mt-2">
+                You can select multiple images
+              </p>
 
               {/* Preview New Images */}
               {previewImages.length > 0 && (
                 <div className="mt-4">
-                  <p className="text-sm font-medium text-gray-700 mb-2">New Images Preview</p>
+                  <p className="text-sm font-medium text-gray-700 mb-2">
+                    New Images Preview
+                  </p>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                     {previewImages.map((preview, index) => (
                       <img
@@ -323,11 +343,11 @@ export default function SettingsPage() {
               disabled={saving}
               className="flex-1 bg-blue-600 text-white py-3 px-4 rounded-lg font-semibold hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
             >
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? "Saving..." : "Save Changes"}
             </button>
             <button
               type="button"
-              onClick={() => router.push('/dashboard')}
+              onClick={() => router.push("/dashboard")}
               className="px-6 py-3 border border-gray-300 rounded-lg font-semibold text-gray-700 hover:bg-gray-50"
             >
               Cancel
@@ -336,5 +356,5 @@ export default function SettingsPage() {
         </form>
       </div>
     </div>
-  )
+  );
 }

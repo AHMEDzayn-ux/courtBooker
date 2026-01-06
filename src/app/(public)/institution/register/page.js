@@ -1,156 +1,174 @@
-'use client'
+"use client";
 
-import { useState, useEffect } from 'react'
-import { createClient } from '@/lib/supabase/client'
-import { useRouter } from 'next/navigation'
-import Link from 'next/link'
-import dynamic from 'next/dynamic'
-
-// Dynamically import map component to avoid SSR issues
-const MapPicker = dynamic(() => import('@/components/MapPicker'), { ssr: false })
+import { useState, useEffect } from "react";
+import { createClient } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 
 export default function InstitutionRegisterPage() {
-  const router = useRouter()
-  const [sports, setSports] = useState([])
+  const router = useRouter();
+  const [sports, setSports] = useState([]);
   const [districts] = useState([
-    'Colombo', 'Gampaha', 'Kalutara', 'Kandy', 'Matale', 'Nuwara Eliya',
-    'Galle', 'Matara', 'Hambantota', 'Jaffna', 'Kilinochchi', 'Mannar',
-    'Vavuniya', 'Mullaitivu', 'Batticaloa', 'Ampara', 'Trincomalee',
-    'Kurunegala', 'Puttalam', 'Anuradhapura', 'Polonnaruwa', 'Badulla',
-    'Monaragala', 'Ratnapura', 'Kegalle'
-  ])
+    "Colombo",
+    "Gampaha",
+    "Kalutara",
+    "Kandy",
+    "Matale",
+    "Nuwara Eliya",
+    "Galle",
+    "Matara",
+    "Hambantota",
+    "Jaffna",
+    "Kilinochchi",
+    "Mannar",
+    "Vavuniya",
+    "Mullaitivu",
+    "Batticaloa",
+    "Ampara",
+    "Trincomalee",
+    "Kurunegala",
+    "Puttalam",
+    "Anuradhapura",
+    "Polonnaruwa",
+    "Badulla",
+    "Monaragala",
+    "Ratnapura",
+    "Kegalle",
+  ]);
 
   const [formData, setFormData] = useState({
-    name: '',
-    district: '',
-    address: '',
-    latitude: 6.9271,
-    longitude: 79.8612,
-    contact_number: '',
-    email: '',
+    name: "",
+    district: "",
+    address: "",
+    google_maps_link: "",
+    contact_number: "",
+    email: "",
     selectedSports: [],
     images: [],
-    adminEmail: '',
-    adminPassword: '',
-    adminName: ''
-  })
+    adminEmail: "",
+    adminPassword: "",
+    adminName: "",
+  });
 
-  const [imageFiles, setImageFiles] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [step, setStep] = useState(1) // 1: Institution Info, 2: Admin Info
+  const [imageFiles, setImageFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [step, setStep] = useState(1); // 1: Institution Info, 2: Admin Info
 
   useEffect(() => {
-    fetchSports()
-  }, [])
+    fetchSports();
+  }, []);
 
   const fetchSports = async () => {
-    const supabase = createClient()
-    const { data } = await supabase
-      .from('sports')
-      .select('*')
-      .order('name')
-    
-    if (data) setSports(data)
-  }
+    const supabase = createClient();
+    const { data } = await supabase.from("sports").select("*").order("name");
+
+    if (data) setSports(data);
+  };
 
   const handleInputChange = (e) => {
-    const { name, value } = e.target
-    setFormData(prev => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleSportToggle = (sportId) => {
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       selectedSports: prev.selectedSports.includes(sportId)
-        ? prev.selectedSports.filter(id => id !== sportId)
-        : [...prev.selectedSports, sportId]
-    }))
-  }
+        ? prev.selectedSports.filter((id) => id !== sportId)
+        : [...prev.selectedSports, sportId],
+    }));
+  };
 
   const handleImageChange = (e) => {
-    const files = Array.from(e.target.files)
+    const files = Array.from(e.target.files);
     if (files.length + imageFiles.length > 5) {
-      setError('Maximum 5 images allowed')
-      return
+      setError("Maximum 5 images allowed");
+      return;
     }
-    setImageFiles(prev => [...prev, ...files])
-  }
+    setImageFiles((prev) => [...prev, ...files]);
+  };
 
   const removeImage = (index) => {
-    setImageFiles(prev => prev.filter((_, i) => i !== index))
-  }
-
-  const handleLocationSelect = (lat, lng) => {
-    setFormData(prev => ({ ...prev, latitude: lat, longitude: lng }))
-  }
+    setImageFiles((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const handleNextStep = () => {
     // Validate step 1
-    if (!formData.name || !formData.district || !formData.address || 
-        !formData.contact_number || !formData.email || 
-        formData.selectedSports.length === 0) {
-      setError('Please fill in all required fields and select at least one sport')
-      return
+    if (
+      !formData.name ||
+      !formData.district ||
+      !formData.address ||
+      !formData.contact_number ||
+      !formData.email ||
+      formData.selectedSports.length === 0
+    ) {
+      setError(
+        "Please fill in all required fields and select at least one sport"
+      );
+      return;
     }
     if (imageFiles.length === 0) {
-      setError('Please upload at least one image')
-      return
+      setError("Please upload at least one image");
+      return;
     }
-    setError('')
-    setStep(2)
-  }
+    setError("");
+    setStep(2);
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setError('')
-    setLoading(true)
+    e.preventDefault();
+    setError("");
+    setLoading(true);
 
     try {
       // Create FormData to send to API
-      const apiFormData = new FormData()
-      apiFormData.append('name', formData.name)
-      apiFormData.append('district', formData.district)
-      apiFormData.append('address', formData.address)
-      apiFormData.append('latitude', formData.latitude)
-      apiFormData.append('longitude', formData.longitude)
-      apiFormData.append('contact_number', formData.contact_number)
-      apiFormData.append('email', formData.email)
-      apiFormData.append('selectedSports', JSON.stringify(formData.selectedSports))
-      apiFormData.append('adminEmail', formData.adminEmail)
-      apiFormData.append('adminPassword', formData.adminPassword)
-      apiFormData.append('adminName', formData.adminName)
-      
+      const apiFormData = new FormData();
+      apiFormData.append("name", formData.name);
+      apiFormData.append("district", formData.district);
+      apiFormData.append("address", formData.address);
+      apiFormData.append("google_maps_link", formData.google_maps_link);
+      apiFormData.append("contact_number", formData.contact_number);
+      apiFormData.append("email", formData.email);
+      apiFormData.append(
+        "selectedSports",
+        JSON.stringify(formData.selectedSports)
+      );
+      apiFormData.append("adminEmail", formData.adminEmail);
+      apiFormData.append("adminPassword", formData.adminPassword);
+      apiFormData.append("adminName", formData.adminName);
+
       // Append image files
-      imageFiles.forEach(file => {
-        apiFormData.append('images', file)
-      })
+      imageFiles.forEach((file) => {
+        apiFormData.append("images", file);
+      });
 
       // Send to API route
-      const response = await fetch('/api/institutions/register', {
-        method: 'POST',
-        body: apiFormData
-      })
+      const response = await fetch("/api/institutions/register", {
+        method: "POST",
+        body: apiFormData,
+      });
 
-      const result = await response.json()
+      const result = await response.json();
 
       if (!response.ok) {
-        setError(result.error || 'Failed to register institution')
-        setLoading(false)
-        return
+        setError(result.error || "Failed to register institution");
+        setLoading(false);
+        return;
       }
 
       // Success!
-      alert('Institution registered successfully! Your institution will be reviewed by our team before going live.')
-      router.push('/')
-
+      alert(
+        "Institution registered successfully! Your institution will be reviewed by our team before going live."
+      );
+      router.push("/");
     } catch (err) {
-      console.error('Error:', err)
-      setError('An unexpected error occurred. Please try again.')
+      console.error("Error:", err);
+      setError("An unexpected error occurred. Please try again.");
     }
 
-    setLoading(false)
-  }
+    setLoading(false);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 py-12 px-4">
@@ -158,9 +176,13 @@ export default function InstitutionRegisterPage() {
         <div className="bg-white rounded-2xl shadow-xl p-8">
           {/* Header */}
           <div className="text-center mb-8">
-            <h1 className="text-3xl font-bold text-gray-900 mb-2">Register Your Institution</h1>
-            <p className="text-gray-600">Join our platform and start accepting bookings</p>
-            <Link 
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Register Your Institution
+            </h1>
+            <p className="text-gray-600">
+              Join our platform and start accepting bookings
+            </p>
+            <Link
               href="/"
               className="inline-block mt-4 text-blue-600 hover:text-blue-700 font-medium"
             >
@@ -171,15 +193,27 @@ export default function InstitutionRegisterPage() {
           {/* Step Indicator */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center">
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                step >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  step >= 1
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-300 text-gray-600"
+                }`}
+              >
                 1
               </div>
-              <div className={`w-24 h-1 ${step >= 2 ? 'bg-blue-600' : 'bg-gray-300'}`}></div>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
-                step >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-300 text-gray-600'
-              }`}>
+              <div
+                className={`w-24 h-1 ${
+                  step >= 2 ? "bg-blue-600" : "bg-gray-300"
+                }`}
+              ></div>
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${
+                  step >= 2
+                    ? "bg-blue-600 text-white"
+                    : "bg-gray-300 text-gray-600"
+                }`}
+              >
                 2
               </div>
             </div>
@@ -189,7 +223,9 @@ export default function InstitutionRegisterPage() {
             {/* Step 1: Institution Information */}
             {step === 1 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Institution Information</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Institution Information
+                </h2>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -219,8 +255,10 @@ export default function InstitutionRegisterPage() {
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                     >
                       <option value="">Select District</option>
-                      {districts.map(d => (
-                        <option key={d} value={d}>{d}</option>
+                      {districts.map((d) => (
+                        <option key={d} value={d}>
+                          {d}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -273,18 +311,20 @@ export default function InstitutionRegisterPage() {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Location on Map <span className="text-red-500">*</span>
+                    Google Maps Link <span className="text-red-500">*</span>
                   </label>
-                  <p className="text-sm text-gray-500 mb-2">Click on the map to set your institution's location</p>
-                  <div className="border border-gray-300 rounded-lg overflow-hidden">
-                    <MapPicker 
-                      initialLat={formData.latitude}
-                      initialLng={formData.longitude}
-                      onLocationSelect={handleLocationSelect}
-                    />
-                  </div>
+                  <input
+                    type="url"
+                    name="google_maps_link"
+                    value={formData.google_maps_link}
+                    onChange={handleInputChange}
+                    required
+                    className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="https://maps.google.com/..."
+                  />
                   <p className="text-xs text-gray-500 mt-2">
-                    Selected: {formData.latitude.toFixed(6)}, {formData.longitude.toFixed(6)}
+                    Go to Google Maps, find your location, click "Share" and
+                    paste the link here
                   </p>
                 </div>
 
@@ -293,13 +333,13 @@ export default function InstitutionRegisterPage() {
                     Available Sports <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {sports.map(sport => (
+                    {sports.map((sport) => (
                       <label
                         key={sport.id}
                         className={`flex items-center p-3 border rounded-lg cursor-pointer transition-all ${
                           formData.selectedSports.includes(sport.id)
-                            ? 'bg-blue-50 border-blue-500'
-                            : 'bg-white border-gray-300 hover:border-gray-400'
+                            ? "bg-blue-50 border-blue-500"
+                            : "bg-white border-gray-300 hover:border-gray-400"
                         }`}
                       >
                         <input
@@ -308,7 +348,9 @@ export default function InstitutionRegisterPage() {
                           onChange={() => handleSportToggle(sport.id)}
                           className="mr-2"
                         />
-                        <span className="text-sm font-medium">{sport.name}</span>
+                        <span className="text-sm font-medium">
+                          {sport.name}
+                        </span>
                       </label>
                     ))}
                   </div>
@@ -317,7 +359,9 @@ export default function InstitutionRegisterPage() {
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Institution Images <span className="text-red-500">*</span>
-                    <span className="text-gray-500 text-xs ml-2">(Max 5 images)</span>
+                    <span className="text-gray-500 text-xs ml-2">
+                      (Max 5 images)
+                    </span>
                   </label>
                   <input
                     type="file"
@@ -340,8 +384,18 @@ export default function InstitutionRegisterPage() {
                             onClick={() => removeImage(index)}
                             className="absolute top-2 right-2 bg-red-500 text-white p-1 rounded-full hover:bg-red-600"
                           >
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                            <svg
+                              className="w-4 h-4"
+                              fill="none"
+                              stroke="currentColor"
+                              viewBox="0 0 24 24"
+                            >
+                              <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth={2}
+                                d="M6 18L18 6M6 6l12 12"
+                              />
                             </svg>
                           </button>
                         </div>
@@ -369,8 +423,12 @@ export default function InstitutionRegisterPage() {
             {/* Step 2: Admin Information */}
             {step === 2 && (
               <div className="space-y-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Account Information</h2>
-                <p className="text-gray-600 mb-4">Create an account to manage your institution</p>
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">
+                  Admin Account Information
+                </h2>
+                <p className="text-gray-600 mb-4">
+                  Create an account to manage your institution
+                </p>
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -425,11 +483,17 @@ export default function InstitutionRegisterPage() {
                 )}
 
                 <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-                  <h3 className="font-semibold text-yellow-900 mb-1">Important</h3>
+                  <h3 className="font-semibold text-yellow-900 mb-1">
+                    Important
+                  </h3>
                   <ul className="text-sm text-yellow-800 space-y-1">
-                    <li>• Your institution will be reviewed before going live</li>
+                    <li>
+                      • Your institution will be reviewed before going live
+                    </li>
                     <li>• You'll receive an email to verify your account</li>
-                    <li>• Once verified, you can add courts and manage bookings</li>
+                    <li>
+                      • Once verified, you can add courts and manage bookings
+                    </li>
                   </ul>
                 </div>
 
@@ -448,14 +512,30 @@ export default function InstitutionRegisterPage() {
                   >
                     {loading ? (
                       <span className="flex items-center justify-center">
-                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        <svg
+                          className="animate-spin -ml-1 mr-3 h-5 w-5 text-white"
+                          xmlns="http://www.w3.org/2000/svg"
+                          fill="none"
+                          viewBox="0 0 24 24"
+                        >
+                          <circle
+                            className="opacity-25"
+                            cx="12"
+                            cy="12"
+                            r="10"
+                            stroke="currentColor"
+                            strokeWidth="4"
+                          ></circle>
+                          <path
+                            className="opacity-75"
+                            fill="currentColor"
+                            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                          ></path>
                         </svg>
                         Registering...
                       </span>
                     ) : (
-                      'Complete Registration'
+                      "Complete Registration"
                     )}
                   </button>
                 </div>
@@ -465,5 +545,5 @@ export default function InstitutionRegisterPage() {
         </div>
       </div>
     </div>
-  )
+  );
 }
