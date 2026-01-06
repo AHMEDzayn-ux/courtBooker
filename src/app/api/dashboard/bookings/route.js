@@ -74,7 +74,7 @@ export async function PUT(request) {
     }
 
     const body = await request.json()
-    const { bookingId, status } = body
+    const { bookingId, status, cancellationReason } = body
 
     // Get institution ID
     const adminClient = createAdminClient()
@@ -88,10 +88,16 @@ export async function PUT(request) {
       return NextResponse.json({ error: 'Not an institution admin' }, { status: 403 })
     }
 
+    // Prepare update data
+    const updateData = { status }
+    if (status === 'cancelled' && cancellationReason) {
+      updateData.cancellation_reason = cancellationReason
+    }
+
     // Update booking (ensuring it belongs to this institution)
     const { error } = await adminClient
       .from('bookings')
-      .update({ status })
+      .update(updateData)
       .eq('id', bookingId)
       .eq('institution_id', adminData.institution_id) // Security check
 

@@ -182,3 +182,16 @@ ALTER PUBLICATION supabase_realtime ADD TABLE bookings;
 
 -- Note: You may need to enable real-time in Supabase dashboard:
 -- Database > Replication > enable real-time for 'bookings' table
+
+-- =====================================================
+-- ADD CANCELLATION REASON FIELD
+-- =====================================================
+
+-- Add cancellation_reason column for tracking why bookings are cancelled
+ALTER TABLE bookings ADD COLUMN IF NOT EXISTS cancellation_reason TEXT;
+
+-- Add index for faster cancellation queries
+CREATE INDEX IF NOT EXISTS idx_bookings_status_cancelled ON bookings(status) WHERE status = 'cancelled';
+
+-- Comment for documentation
+COMMENT ON COLUMN bookings.cancellation_reason IS 'Reason provided when a booking is cancelled by the institution';

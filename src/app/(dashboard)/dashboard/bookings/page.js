@@ -92,7 +92,14 @@ export default function BookingsPage() {
   }
 
   const handleCancelBooking = async (bookingId) => {
-    if (!confirm('Are you sure you want to cancel this booking?')) {
+    const reason = prompt('Please provide a reason for cancellation (will be sent via SMS to customer):')
+    
+    if (!reason || reason.trim() === '') {
+      alert('Cancellation reason is required')
+      return
+    }
+
+    if (!confirm('Are you sure you want to cancel this booking? The customer will be notified via SMS.')) {
       return
     }
 
@@ -102,7 +109,8 @@ export default function BookingsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           bookingId,
-          status: 'cancelled'
+          status: 'cancelled',
+          cancellationReason: reason.trim()
         })
       })
 
@@ -112,11 +120,11 @@ export default function BookingsPage() {
         throw new Error(result.error)
       }
 
-      alert('Booking cancelled successfully')
+      alert('Booking cancelled successfully. Customer will be notified via SMS.')
       fetchBookings()
     } catch (error) {
       console.error('Error:', error)
-      alert('Failed to cancel booking')
+      alert('Failed to cancel booking: ' + error.message)
     }
   }
 
