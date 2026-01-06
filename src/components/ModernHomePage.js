@@ -237,7 +237,7 @@ export default function ModernHomePage() {
                 transition={{ delay: 0.8, duration: 0.8 }}
               >
                 <a
-                  href="#facilities"
+                  href="#filters"
                   className="inline-flex items-center justify-center px-12 py-5 text-xl font-bold text-gray-900 bg-gradient-to-r from-yellow-400 via-yellow-500 to-orange-500 rounded-full shadow-2xl hover:shadow-yellow-500/50 transition-all duration-300 hover:scale-105"
                 >
                   Find Courts
@@ -260,7 +260,10 @@ export default function ModernHomePage() {
       </section>
 
       {/* Search and Filters Section */}
-      <section className="py-7 bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50">
+      <section
+        id="filters"
+        className="py-7 bg-gradient-to-br from-indigo-50 via-purple-50 to-blue-50"
+      >
         <div className="px-4 sm:px-6 lg:px-12 xl:px-20">
           <div className="max-w-7xl mx-auto">
             <motion.div
@@ -408,10 +411,11 @@ export default function ModernHomePage() {
                     key={facility.id}
                     initial={{ opacity: 0, y: 50, filter: "blur(10px)" }}
                     whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                    viewport={{ once: true, margin: "-20px" }}
+                    exit={{ opacity: 0, y: 50, filter: "blur(10px)" }}
+                    viewport={{ once: false, amount: 0.2 }}
                     transition={{
-                      duration: 0.4,
-                      delay: index * 0.05,
+                      duration: 0.3,
+                      delay: index * 0.03,
                       ease: "easeOut",
                     }}
                   >
