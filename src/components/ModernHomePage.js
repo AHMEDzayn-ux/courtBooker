@@ -286,7 +286,7 @@ export default function ModernHomePage() {
                   {/* Search by Name */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      🔍 Search by Name
+                       Search by Name
                     </label>
                     <input
                       type="text"
@@ -300,7 +300,7 @@ export default function ModernHomePage() {
                   {/* Filter by District */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      📍 Filter by District
+                      Filter by District
                     </label>
                     <select
                       value={selectedDistrict}
@@ -319,7 +319,7 @@ export default function ModernHomePage() {
                   {/* Filter by Sport */}
                   <div>
                     <label className="block text-sm font-semibold text-gray-800 mb-2">
-                      🏀 Filter by Sport
+                      Filter by Sport
                     </label>
                     <select
                       value={selectedSport}
@@ -339,10 +339,10 @@ export default function ModernHomePage() {
                 {/* Results and Clear Filters */}
                 <div className="flex items-center justify-between gap-4 pt-4 border-t border-gray-200">
                   <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></div>
+                    <div className="w-2 h-2 bg-slate-900 rounded-full animate-pulse"></div>
                     <p className="text-gray-700 font-medium">
                       Found{" "}
-                      <span className="text-2xl font-bold text-indigo-600 mx-1">
+                      <span className="text-2xl font-bold text-slate-900 mx-1">
                         {institutions.length}
                       </span>{" "}
                       {institutions.length === 1 ? "facility" : "facilities"}
@@ -351,7 +351,7 @@ export default function ModernHomePage() {
                   {(searchQuery || selectedDistrict || selectedSport) && (
                     <button
                       onClick={clearFilters}
-                      className="px-5 py-2.5 bg-gradient-to-r from-indigo-600 to-purple-600 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 whitespace-nowrap"
+                      className="px-5 py-2.5 bg-slate-800 text-white font-semibold rounded-lg hover:shadow-lg hover:scale-105 transition-all duration-300 flex items-center gap-2 whitespace-nowrap"
                     >
                       <svg
                         className="w-5 h-5"
@@ -391,9 +391,9 @@ export default function ModernHomePage() {
                 transition={{ duration: 0.8 }}
                 className="text-center mb-6"
               >
-                <div className="inline-flex items-center gap-3 px-6 py-3 bg-indigo-100 rounded-full">
-                  <div className="w-2 h-2 bg-indigo-600 rounded-full animate-pulse"></div>
-                  <h2 className="text-xl md:text-xl font-bold text-indigo-900">
+                <div className="inline-flex items-center gap-3 px-6 py-3 bg-slate-200 rounded-full">
+                  <div className="w-2 h-2 bg-slate-900 rounded-full animate-pulse"></div>
+                  <h2 className="text-xl md:text-xl font-bold text-slate-900">
                     Your Search Results
                   </h2>
                 </div>
@@ -458,7 +458,7 @@ export default function ModernHomePage() {
                             <span className="text-sm text-gray-500">
                               {facility.contact_number}
                             </span>
-                            <span className="text-slate-900 font-semibold flex items-center gap-1 group-hover:text-indigo-600 transition-colors">
+                            <span className="text-slate-800 font-semibold flex items-center gap-1 group-hover:text-slate-900 transition-colors">
                               View Details
                               <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
                             </span>
@@ -478,117 +478,6 @@ export default function ModernHomePage() {
         </div>
       </section>
 
-      {/* Footer */}
-      <footer className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-200">
-        <div className="px-4 sm:px-6 lg:px-12 xl:px-20 py-8">
-          <div className="max-w-7xl mx-auto">
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-6">
-              {/* About Section */}
-              <div className="col-span-2 md:col-span-1">
-                <h3 className="text-white text-base font-bold mb-3">
-                  CourtBooker
-                </h3>
-                <p className="text-xs leading-relaxed">
-                  Your one-stop platform for booking indoor sports courts across
-                  Sri Lanka.
-                </p>
-              </div>
-
-              {/* Quick Links */}
-              <div>
-                <h3 className="text-white text-base font-bold mb-3">
-                  Quick Links
-                </h3>
-                <ul className="space-y-1.5 text-xs">
-                  <li>
-                    <Link
-                      href="/"
-                      className="hover:text-white transition-colors"
-                    >
-                      Home
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/#facilities"
-                      className="hover:text-white transition-colors"
-                    >
-                      Find Courts
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/track-booking"
-                      className="hover:text-white transition-colors"
-                    >
-                      Track Booking
-                    </Link>
-                  </li>
-                  <li>
-                    <Link
-                      href="/institution/register"
-                      className="hover:text-white transition-colors"
-                    >
-                      Register Institution
-                    </Link>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Contact */}
-              <div>
-                <h3 className="text-white text-base font-bold mb-3">Contact</h3>
-                <ul className="space-y-1.5 text-xs">
-                  <li className="flex items-center gap-2">
-                    <MapPin className="w-3 h-3" />
-                    <span>Sri Lanka</span>
-                  </li>
-                  <li>
-                    <a
-                      href="mailto:contact@courtbooker.lk"
-                      className="hover:text-white transition-colors flex items-center gap-2"
-                    >
-                      <svg
-                        className="w-3 h-3"
-                        fill="none"
-                        stroke="currentColor"
-                        viewBox="0 0 24 24"
-                      >
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-                        />
-                      </svg>
-                      contact@courtbooker.lk
-                    </a>
-                  </li>
-                </ul>
-              </div>
-
-              {/* Developer Credit */}
-              <div>
-                <h3 className="text-white text-base font-bold mb-3">
-                  Developer
-                </h3>
-                <p className="text-xs">
-                  <span className="text-white font-semibold">
-                    Ruzayn Ahmedh
-                  </span>
-                </p>
-              </div>
-            </div>
-
-            {/* Bottom Bar */}
-            <div className="border-t border-gray-700 pt-4 text-center">
-              <p className="text-xs">
-                © {new Date().getFullYear()} CourtBooker. All rights reserved.
-              </p>
-            </div>
-          </div>
-        </div>
-      </footer>
     </div>
   );
 }

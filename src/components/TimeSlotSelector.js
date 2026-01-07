@@ -318,7 +318,7 @@ export default function TimeSlotSelector({ court, institutionId, availableSports
                     {selectedSlots[0].displayTime} - {getEndTime().substring(0, 5)}
                   </p>
                   <p className="text-sm text-gray-700 mt-1">
-                    Duration: {getTotalDuration()} minutes ({selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''})
+                    Duration: {getTotalDuration()/60} minutes ({selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''})
                   </p>
                   <p className="text-2xl font-bold text-green-600 mt-3">
                     Total: LKR {getTotalPrice().toFixed(2)}

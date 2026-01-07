@@ -36,9 +36,15 @@ export default function Navbar() {
           >
             <Logo
               className="w-8 h-8"
-              color={isScrolled ? "#111827" : "#ffffff"}
+              color={isScrolled ? "#1e293b" : "#ffffff"}
             />
-            <span className="hidden sm:inline">CourtBooker</span>
+            <span
+              className={`hidden sm:inline ${
+                isScrolled ? "text-slate-700" : ""
+              }`}
+            >
+              CourtBooker
+            </span>
           </Link>
 
           {/* Desktop Navigation - Right */}
@@ -55,7 +61,7 @@ export default function Navbar() {
               }}
               className={`font-semibold transition-colors cursor-pointer ${
                 isScrolled
-                  ? "text-gray-700 hover:text-slate-900"
+                  ? "text-slate-700 hover:text-slate-900"
                   : "text-white hover:text-gray-200"
               }`}
             >
@@ -65,7 +71,7 @@ export default function Navbar() {
               href="/track-booking"
               className={`font-semibold transition-colors ${
                 isScrolled
-                  ? "text-gray-700 hover:text-slate-900"
+                  ? "text-slate-700 hover:text-slate-900"
                   : "text-white hover:text-gray-200"
               }`}
             >
@@ -75,8 +81,8 @@ export default function Navbar() {
               href="/institution/login"
               className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${
                 isScrolled
-                  ? "bg-slate-900 text-white shadow-md hover:bg-black"
-                  : "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  ? "bg-slate-800 text-white shadow-md hover:bg-slate-900 active:bg-slate-900"
+                  : "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-900 active:text-white"
               }`}
             >
               Institution Login
@@ -85,8 +91,8 @@ export default function Navbar() {
               href="/institution/register"
               className={`px-4 py-2 rounded-lg font-semibold transition-all duration-300 ${
                 isScrolled
-                  ? "bg-slate-900 text-white shadow-md hover:bg-black"
-                  : "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:border-slate-300"
+                  ? "bg-slate-800 text-white shadow-md hover:bg-slate-900 active:bg-slate-900"
+                  : "bg-white text-slate-900 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 active:bg-slate-900 active:text-white"
               }`}
             >
               Register Institution
@@ -124,28 +130,28 @@ export default function Navbar() {
             </Link>
             <Link
               href="/#facilities"
-              className="block py-2 text-gray-700 hover:text-slate-900 font-semibold"
+              className="block py-2 text-slate-700 hover:text-slate-900 font-semibold"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Find Courts
             </Link>
             <Link
               href="/track-booking"
-              className="block py-2 text-gray-700 hover:text-slate-900 font-semibold"
+              className="block py-2 text-slate-700 hover:text-slate-900 font-semibold"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Track Booking
             </Link>
             <Link
               href="/institution/login"
-              className="block py-2 px-4 bg-slate-900 text-white rounded-lg text-center font-semibold hover:bg-black shadow-md"
+              className="block py-2 px-4 bg-slate-700 text-white rounded-lg text-center font-semibold hover:bg-slate-900 active:bg-slate-900 shadow-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Institution Login
             </Link>
             <Link
               href="/institution/register"
-              className="block py-2 px-4 bg-slate-900 text-white rounded-lg text-center font-semibold hover:bg-black shadow-md"
+              className="block py-2 px-4 bg-slate-900 text-white rounded-lg text-center font-semibold hover:bg-slate-900 active:bg-slate-900 shadow-md"
               onClick={() => setIsMobileMenuOpen(false)}
             >
               Register Institution
