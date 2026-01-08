@@ -162,9 +162,32 @@ export default function InstitutionRegisterPage() {
   }, [showRegistration]); // Re-run when view changes
 
   const fetchSports = async () => {
-    const supabase = createClient();
-    const { data } = await supabase.from("sports").select("*").order("name");
-    if (data) setSports(data);
+    try {
+      const supabase = createClient();
+      console.log("Fetching sports...");
+      const { data, error } = await supabase
+        .from("sports")
+        .select("*")
+        .order("name");
+
+      console.log("Sports fetch result:", { data, error });
+
+      if (error) {
+        console.error("Error fetching sports:", error);
+        setError("Failed to load available sports. Please refresh the page.");
+        return;
+      }
+
+      if (data) {
+        console.log("Setting sports:", data);
+        setSports(data);
+      } else {
+        console.warn("No sports data returned");
+      }
+    } catch (err) {
+      console.error("Exception in fetchSports:", err);
+      setError("Failed to load available sports. Please refresh the page.");
+    }
   };
 
   const handleInputChange = (e) => {
@@ -736,24 +759,30 @@ export default function InstitutionRegisterPage() {
                     Available Sports <span className="text-red-500">*</span>
                   </label>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {sports.map((sport) => {
-                      const isSelected = formData.selectedSports.includes(
-                        sport.id
-                      );
-                      return (
-                        <div
-                          key={sport.id}
-                          onClick={() => handleSportToggle(sport.id)}
-                          className={`cursor-pointer px-4 py-3 rounded-lg border text-sm font-semibold transition-all duration-200 text-center select-none ${
-                            isSelected
-                              ? "bg-slate-900 border-slate-900 text-white shadow-md transform scale-[1.02]"
-                              : "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
-                          }`}
-                        >
-                          {sport.name}
-                        </div>
-                      );
-                    })}
+                    {sports.length === 0 ? (
+                      <div className="col-span-2 md:col-span-4 text-center py-8 text-slate-500">
+                        {error ? error : "Loading sports..."}
+                      </div>
+                    ) : (
+                      sports.map((sport) => {
+                        const isSelected = formData.selectedSports.includes(
+                          sport.id
+                        );
+                        return (
+                          <div
+                            key={sport.id}
+                            onClick={() => handleSportToggle(sport.id)}
+                            className={`cursor-pointer px-4 py-3 rounded-lg border text-sm font-semibold transition-all duration-200 text-center select-none ${
+                              isSelected
+                                ? "bg-slate-900 border-slate-900 text-white shadow-md transform scale-[1.02]"
+                                : "bg-white border-slate-200 text-slate-600 hover:border-slate-400 hover:bg-slate-50"
+                            }`}
+                          >
+                            {sport.name}
+                          </div>
+                        );
+                      })
+                    )}
                   </div>
                 </div>
 
