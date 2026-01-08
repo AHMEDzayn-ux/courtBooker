@@ -50,10 +50,10 @@ export default function ModernHomePage() {
   const [selectedSport, setSelectedSport] = useState("");
 
   const heroImages = [
-    "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1920&q=80",
-    "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1920&q=80",
-    "https://images.unsplash.com/photo-1587384474964-3a06ce1ce699?w=1920&q=80",
-    "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=1920&q=80",
+    "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1920&h=1080&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1920&h=1080&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1587384474964-3a06ce1ce699?w=1920&h=1080&fit=crop&q=80",
+    "https://images.unsplash.com/photo-1571902943202-507ec2618e8f?w=1920&h=1080&fit=crop&q=80",
   ];
 
   const fetchData = async () => {
@@ -433,7 +433,7 @@ export default function ModernHomePage() {
                           <Image
                             src={
                               facility.images?.[0] ||
-                              "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800"
+                              "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&h=600&fit=crop&q=80"
                             }
                             alt={facility.name}
                             fill

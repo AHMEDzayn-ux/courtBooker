@@ -6,7 +6,7 @@ import BookingModal from "./BookingModal";
 
 // Cache for bookings data with TTL
 const bookingsCache = new Map();
-const CACHE_TTL = 30000; // 30 seconds - short TTL to avoid stale data
+const CACHE_TTL = 30000; // 30 seconds
 
 function getCacheKey(courtId, date) {
   return `${courtId}:${date}`;
@@ -44,21 +44,38 @@ export default function TimeSlotSelector({
   );
   const [loading, setLoading] = useState(false);
   const [showBookingModal, setShowBookingModal] = useState(false);
-  const [lastRefresh, setLastRefresh] = useState(null);
   const [realtimeStatus, setRealtimeStatus] = useState("disconnected");
+  const [debugLog, setDebugLog] = useState("No events yet...");
+
+  // Refs for State (Critical for Event Listeners)
   const supabaseRef = useRef(null);
   const channelRef = useRef(null);
   const fetchTimeoutRef = useRef(null);
   const isMountedRef = useRef(true);
+
+  // Dragging Refs
   const isDraggingRef = useRef(false);
   const lastTouchedSlotRef = useRef(null);
+  const gridContainerRef = useRef(null);
 
-  // Memoized fetch function to prevent stale closures
+  // Mirror state in refs for the non-passive event listener
+  const slotsRef = useRef(slots);
+  const selectedSlotsRef = useRef(selectedSlots);
+
+  // Update refs whenever state changes
+  useEffect(() => {
+    slotsRef.current = slots;
+  }, [slots]);
+
+  useEffect(() => {
+    selectedSlotsRef.current = selectedSlots;
+  }, [selectedSlots]);
+
+  // Memoized fetch function
   const fetchBookings = useCallback(
     async (forceRefresh = false) => {
       if (!selectedDate || !court.id) return;
 
-      // Check cache first (unless force refresh)
       if (!forceRefresh) {
         const cached = getCachedBookings(court.id, selectedDate);
         if (cached) {
@@ -71,7 +88,6 @@ export default function TimeSlotSelector({
       const supabase = supabaseRef.current || createClient();
 
       try {
-        // Fetch both bookings and unavailability blocks in parallel
         const [bookingsResult, unavailabilityResult] = await Promise.all([
           supabase
             .from("bookings")
@@ -91,7 +107,6 @@ export default function TimeSlotSelector({
         const bookings = bookingsResult.data || [];
         const unavailable = unavailabilityResult.data || [];
 
-        // Combine bookings and unavailability blocks
         const allBlocked = [
           ...bookings.map((b) => ({
             start_time: b.start_time,
@@ -105,10 +120,8 @@ export default function TimeSlotSelector({
           })),
         ];
 
-        // Cache the result
         setCachedBookings(court.id, selectedDate, allBlocked);
         updateSlotsWithBookings(allBlocked);
-        setLastRefresh(new Date());
       } catch (error) {
         console.error("Error fetching bookings:", error);
       } finally {
@@ -127,14 +140,10 @@ export default function TimeSlotSelector({
           (blocked) =>
             slot.time >= blocked.start_time && slot.time < blocked.end_time
         );
-        return {
-          ...slot,
-          available: !isBlocked,
-        };
+        return { ...slot, available: !isBlocked };
       })
     );
 
-    // Clear any selected slots that are no longer available
     setSelectedSlots((prev) =>
       prev.filter(
         (selected) =>
@@ -147,89 +156,148 @@ export default function TimeSlotSelector({
     );
   }, []);
 
+  // --- HELPER: Process Slot Selection (Used by both Mouse and Touch) ---
+  const processSlotSelection = (time) => {
+    // Prevent processing the same slot multiple times in one drag event
+    if (lastTouchedSlotRef.current === time) return;
+
+    const slot = slotsRef.current.find((s) => s.time === time);
+    if (slot && slot.available) {
+      lastTouchedSlotRef.current = time;
+
+      const isSelected = selectedSlotsRef.current.some((s) => s.time === time);
+
+      if (!isSelected) {
+        // Add to selection
+        setSelectedSlots((prev) =>
+          [...prev, slot].sort((a, b) => a.time.localeCompare(b.time))
+        );
+      }
+    }
+  };
+
+  // onClick as ultimate fallback for touch devices
+  const handleClick = (slot, e) => {
+    const timestamp = new Date().toLocaleTimeString();
+    const logMsg = `[${timestamp}] CLICK on ${slot.time} (type: ${e.type})`;
+    setDebugLog(logMsg);
+
+    if (!slot.available) return;
+
+    // Toggle slot selection
+    const isAlreadySelected = selectedSlots.some((s) => s.time === slot.time);
+
+    if (isAlreadySelected) {
+      console.log("[CLICK] Deselecting slot");
+      setSelectedSlots(selectedSlots.filter((s) => s.time !== slot.time));
+    } else {
+      console.log("[CLICK] Selecting slot");
+      setSelectedSlots(
+        [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
+      );
+    }
+  };
+
+  // --- TOUCH / POINTER MOVE HANDLER (The "Paint" Logic) ---
+  useEffect(() => {
+    const container = gridContainerRef.current;
+    if (!container) return;
+
+    // We use native listeners with { passive: false } to reliably prevent scrolling on touch
+    const handleNativeMove = (e) => {
+      if (!isDraggingRef.current) return;
+
+      // Prevent scrolling while dragging slots
+      if (e.cancelable && e.type === "touchmove") {
+        e.preventDefault();
+      }
+
+      // Get coordinates
+      let clientX, clientY;
+      if (e.type === "touchmove") {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+      } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+      }
+
+      // Find element under finger/cursor
+      const targetElement = document.elementFromPoint(clientX, clientY);
+      const slotButton = targetElement?.closest("button[data-slot-time]");
+
+      if (slotButton && slotButton.dataset.slotTime) {
+        processSlotSelection(slotButton.dataset.slotTime);
+      }
+    };
+
+    container.addEventListener("touchmove", handleNativeMove, {
+      passive: false,
+    });
+    // We can also attach pointermove here for consistency, or rely on React's onPointerEnter for mouse
+    container.addEventListener("pointermove", handleNativeMove, {
+      passive: false,
+    });
+
+    return () => {
+      container.removeEventListener("touchmove", handleNativeMove);
+      container.removeEventListener("pointermove", handleNativeMove);
+    };
+  }, []); // Deps are empty because we use refs (slotsRef, selectedSlotsRef)
+
+  // --- LIFECYCLE & SUBSCRIPTION ---
   useEffect(() => {
     isMountedRef.current = true;
+    if (!supabaseRef.current) supabaseRef.current = createClient();
 
-    // Initialize Supabase client
-    if (!supabaseRef.current) {
-      supabaseRef.current = createClient();
-    }
-
-    // Only fetch when both date and sport are selected
     if (selectedDate && selectedSport) {
       generateSlots();
-      fetchBookings(true); // Force refresh on date/sport change
-
-      // Set up real-time subscription for booking changes
+      fetchBookings(true);
       setupRealtimeSubscription();
-
-      // Also subscribe to court unavailability changes
-      setupUnavailabilitySubscription();
     }
 
-    // Add global event listeners for drag end
-    const handleGlobalMouseUp = () => {
-      if (isDraggingRef.current) {
-        handleDragEnd();
-      }
+    const handleGlobalEnd = (e) => {
+      isDraggingRef.current = false;
+      lastTouchedSlotRef.current = null;
     };
 
-    const handleGlobalTouchEnd = () => {
-      if (isDraggingRef.current) {
-        handleDragEnd();
-      }
-    };
+    // Attach global listeners to catch release outside container
+    window.addEventListener("pointerup", handleGlobalEnd);
+    window.addEventListener("pointercancel", handleGlobalEnd);
+    window.addEventListener("touchend", handleGlobalEnd);
 
-    document.addEventListener("mouseup", handleGlobalMouseUp);
-    document.addEventListener("touchend", handleGlobalTouchEnd);
-
-    // Cleanup function
     return () => {
       isMountedRef.current = false;
-      if (channelRef.current) {
-        channelRef.current.unsubscribe();
-      }
-      if (fetchTimeoutRef.current) {
-        clearTimeout(fetchTimeoutRef.current);
-      }
-      document.removeEventListener("mouseup", handleGlobalMouseUp);
-      document.removeEventListener("touchend", handleGlobalTouchEnd);
+      if (channelRef.current) channelRef.current.unsubscribe();
+      if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+      window.removeEventListener("pointerup", handleGlobalEnd);
+      window.removeEventListener("pointercancel", handleGlobalEnd);
+      window.removeEventListener("touchend", handleGlobalEnd);
     };
   }, [selectedDate, selectedSport, court.id, fetchBookings]);
 
   const setupRealtimeSubscription = () => {
-    // Remove existing subscription if any
-    if (channelRef.current) {
-      channelRef.current.unsubscribe();
-    }
+    if (channelRef.current) channelRef.current.unsubscribe();
 
-    // Create new channel for this court
     const channel = supabaseRef.current
       .channel(`court_${court.id}_availability`)
       .on(
         "postgres_changes",
         {
-          event: "*", // Listen to INSERT, UPDATE, DELETE
+          event: "*",
           schema: "public",
           table: "bookings",
           filter: `court_id=eq.${court.id}`,
         },
         (payload) => {
-          console.log("Real-time booking change detected:", payload);
-
-          // Check if the change affects the currently selected date
-          const changedBooking = payload.new || payload.old;
-          if (changedBooking && changedBooking.booking_date === selectedDate) {
-            // Invalidate cache and refresh
+          const changed = payload.new || payload.old;
+          if (changed && changed.booking_date === selectedDate) {
             invalidateCache(court.id, selectedDate);
-
-            // Debounce rapid updates
-            if (fetchTimeoutRef.current) {
-              clearTimeout(fetchTimeoutRef.current);
-            }
-            fetchTimeoutRef.current = setTimeout(() => {
-              fetchBookings(true);
-            }, 100);
+            if (fetchTimeoutRef.current) clearTimeout(fetchTimeoutRef.current);
+            fetchTimeoutRef.current = setTimeout(
+              () => fetchBookings(true),
+              100
+            );
           }
         }
       )
@@ -242,7 +310,6 @@ export default function TimeSlotSelector({
           filter: `court_id=eq.${court.id}`,
         },
         (payload) => {
-          console.log("Real-time unavailability change detected:", payload);
           const changed = payload.new || payload.old;
           if (changed && changed.unavailable_date === selectedDate) {
             invalidateCache(court.id, selectedDate);
@@ -251,22 +318,16 @@ export default function TimeSlotSelector({
         }
       )
       .subscribe((status) => {
-        console.log("Real-time subscription status:", status);
         setRealtimeStatus(status === "SUBSCRIBED" ? "connected" : status);
       });
 
     channelRef.current = channel;
   };
 
-  const setupUnavailabilitySubscription = () => {
-    // Already handled in the main channel above
-  };
-
   const generateSlots = () => {
     const slots = [];
     const [startHour, startMin] = court.opening_time.split(":").map(Number);
     const [endHour, endMin] = court.closing_time.split(":").map(Number);
-
     let currentTime = startHour * 60 + startMin;
     const endTime = endHour * 60 + endMin;
 
@@ -289,87 +350,74 @@ export default function TimeSlotSelector({
 
       currentTime += court.slot_duration_minutes;
     }
-
     setSlots(slots);
   };
 
-  const handleSlotClick = (slot) => {
-    if (!slot.available) return;
+  // --- INTERACTION HANDLERS ---
 
-    const index = selectedSlots.findIndex((s) => s.time === slot.time);
-
-    if (index > -1) {
-      // Deselect slot
-      setSelectedSlots(selectedSlots.filter((s) => s.time !== slot.time));
-    } else {
-      // Select slot (add to end for continuous selection)
-      setSelectedSlots(
-        [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
-      );
+  const handlePointerDown = (slot, e) => {
+    if (!slot.available) {
+      return;
     }
-  };
-
-  // Handle mouse/touch drag start
-  const handleDragStart = (slot, e) => {
-    if (!slot.available) return;
 
     isDraggingRef.current = true;
     lastTouchedSlotRef.current = slot.time;
 
-    // Add the initial slot to selection
-    const index = selectedSlots.findIndex((s) => s.time === slot.time);
-    if (index === -1) {
+    // Toggle logic for the initial click/tap
+    const isAlreadySelected = selectedSlots.some((s) => s.time === slot.time);
+
+    if (isAlreadySelected) {
+      setSelectedSlots(selectedSlots.filter((s) => s.time !== slot.time));
+    } else {
       setSelectedSlots(
         [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
       );
     }
   };
 
-  // Handle mouse/touch drag over slots
-  const handleDragOver = (slot, e) => {
-    if (!isDraggingRef.current || !slot.available) return;
-    if (lastTouchedSlotRef.current === slot.time) return;
+  // Fallback touch handler for devices where pointer events don't work
+  const handleTouchStart = (slot, e) => {
+    console.log("[DEBUG] handleTouchStart fired", {
+      slotTime: slot.time,
+      available: slot.available,
+      touches: e.touches.length,
+    });
 
+    if (!slot.available) {
+      console.log("[DEBUG] Slot not available, returning");
+      return;
+    }
+
+    // Prevent default to avoid any browser handling that might interfere
+    // But don't prevent default if it breaks the event
+    // e.preventDefault();
+
+    isDraggingRef.current = true;
     lastTouchedSlotRef.current = slot.time;
 
-    // Add slot if not already selected
-    const index = selectedSlots.findIndex((s) => s.time === slot.time);
-    if (index === -1) {
+    // Toggle logic for the initial tap
+    const isAlreadySelected = selectedSlots.some((s) => s.time === slot.time);
+    console.log("[DEBUG] Touch - isAlreadySelected:", isAlreadySelected);
+
+    if (isAlreadySelected) {
+      console.log("[DEBUG] Touch - Deselecting slot");
+      setSelectedSlots(selectedSlots.filter((s) => s.time !== slot.time));
+    } else {
+      console.log("[DEBUG] Touch - Selecting slot");
       setSelectedSlots(
         [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
       );
     }
   };
 
-  // Handle drag end
-  const handleDragEnd = () => {
-    isDraggingRef.current = false;
-    lastTouchedSlotRef.current = null;
-  };
-
-  // Touch event handlers
-  const handleTouchStart = (slot, e) => {
-    e.preventDefault();
-    handleDragStart(slot, e);
-  };
-
-  const handleTouchMove = (e) => {
-    if (!isDraggingRef.current) return;
-
-    const touch = e.touches[0];
-    const element = document.elementFromPoint(touch.clientX, touch.clientY);
-
-    if (element && element.dataset.slotTime) {
-      const slot = slots.find((s) => s.time === element.dataset.slotTime);
-      if (slot) {
-        handleDragOver(slot, e);
-      }
+  // Mouse-specific helper for smoother desktop experience
+  const handlePointerEnter = (slot) => {
+    if (isDraggingRef.current) {
+      console.log("[DEBUG] handlePointerEnter while dragging", {
+        slotTime: slot.time,
+      });
+      processSlotSelection(slot.time);
     }
-  };
-
-  const handleTouchEnd = (e) => {
-    e.preventDefault();
-    handleDragEnd();
   };
 
   const handleDateChange = (days) => {
@@ -379,18 +427,11 @@ export default function TimeSlotSelector({
     setSelectedSlots([]);
   };
 
-  const getTotalDuration = () => {
-    return selectedSlots.length * court.slot_duration_minutes;
-  };
-
-  const getTotalPrice = () => {
-    const pricePerSlot = court.price_per_slot || 0;
-    return selectedSlots.length * pricePerSlot;
-  };
-
-  const getStartTime = () => {
-    return selectedSlots[0]?.time || "";
-  };
+  const getTotalDuration = () =>
+    selectedSlots.length * court.slot_duration_minutes;
+  const getTotalPrice = () =>
+    selectedSlots.length * (court.price_per_slot || 0);
+  const getStartTime = () => selectedSlots[0]?.time || "";
 
   const getEndTime = () => {
     if (selectedSlots.length === 0) return "";
@@ -414,7 +455,6 @@ export default function TimeSlotSelector({
         <h2 className="text-xl font-bold text-gray-900">
           Select Sport, Date & Time
         </h2>
-        {/* Realtime status indicator */}
         {selectedDate && selectedSport && (
           <div className="flex items-center gap-2">
             <div
@@ -432,7 +472,6 @@ export default function TimeSlotSelector({
             <button
               onClick={() => fetchBookings(true)}
               className="ml-2 p-1.5 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
-              title="Refresh availability"
             >
               <svg
                 className={`w-4 h-4 ${loading ? "animate-spin" : ""}`}
@@ -502,7 +541,6 @@ export default function TimeSlotSelector({
               />
             </svg>
           </button>
-
           <div className="text-center">
             <input
               type="date"
@@ -525,7 +563,6 @@ export default function TimeSlotSelector({
               </p>
             )}
           </div>
-
           <button
             onClick={() => handleDateChange(1)}
             disabled={!selectedDate}
@@ -548,7 +585,7 @@ export default function TimeSlotSelector({
         </div>
       </div>
 
-      {/* Time Slots Grid - Only show when both date and sport are selected */}
+      {/* Time Slots Grid */}
       {!showTimeSlots ? (
         <div className="text-center py-12 bg-gradient-to-br from-slate-50 to-gray-50 rounded-xl border-2 border-dashed border-gray-300">
           <svg
@@ -579,24 +616,29 @@ export default function TimeSlotSelector({
             <label className="block text-sm font-semibold text-gray-700 mb-3">
               Select Time Slots <span className="text-red-500">*</span>
             </label>
-            <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-4">
+
+            {/* DEBUG BAR - Remove after fixing */}
+            <div className="mb-4 p-3 bg-yellow-100 border-2 border-yellow-400 rounded-lg text-sm font-mono">
+              <strong>DEBUG:</strong> {debugLog}
+            </div>
+
+            {/* Grid container */}
+            <div
+              ref={gridContainerRef}
+              className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-4 select-none"
+            >
               {slots.map((slot) => (
                 <button
                   key={slot.time}
                   data-slot-time={slot.time}
-                  onClick={() => handleSlotClick(slot)}
-                  onMouseDown={(e) => handleDragStart(slot, e)}
-                  onMouseEnter={(e) => handleDragOver(slot, e)}
-                  onMouseUp={handleDragEnd}
-                  onTouchStart={(e) => handleTouchStart(slot, e)}
-                  onTouchMove={handleTouchMove}
-                  onTouchEnd={handleTouchEnd}
+                  type="button"
+                  onClick={(e) => handleClick(slot, e)}
                   disabled={!slot.available}
                   className={`p-3 text-sm font-bold rounded-lg transition-all select-none ${
                     selectedSlots.find((s) => s.time === slot.time)
                       ? "bg-slate-800 text-white ring-2 ring-slate-800 ring-offset-2 shadow-md"
                       : slot.available
-                      ? "bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-300 hover:shadow"
+                      ? "bg-green-50 text-green-700 hover:bg-green-100 border-2 border-green-300 hover:shadow active:bg-green-200"
                       : "bg-gray-100 text-gray-400 cursor-not-allowed opacity-50"
                   }`}
                 >
@@ -605,7 +647,6 @@ export default function TimeSlotSelector({
               ))}
             </div>
 
-            {/* Legend */}
             <div className="flex flex-wrap gap-4 text-sm">
               <div className="flex items-center">
                 <div className="w-4 h-4 bg-green-50 border-2 border-green-300 rounded mr-2"></div>
@@ -622,7 +663,6 @@ export default function TimeSlotSelector({
             </div>
           </div>
 
-          {/* Booking Summary */}
           {selectedSlots.length > 0 && (
             <div className="bg-gradient-to-r from-slate-50 to-gray-50 border-2 border-slate-200 rounded-xl p-5 shadow-sm">
               <div className="flex items-center justify-between flex-wrap gap-4">
@@ -655,7 +695,6 @@ export default function TimeSlotSelector({
         </>
       )}
 
-      {/* Booking Modal */}
       {showBookingModal && (
         <BookingModal
           court={court}

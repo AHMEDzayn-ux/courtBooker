@@ -111,7 +111,7 @@ const InstitutionMasonry = ({
     const images = institutions.map(
       (i) =>
         i.images?.[0] ||
-        "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800"
+        "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&h=600&fit=crop&q=80"
     );
     preloadImages(images).then(() => setImagesReady(true));
   }, [institutions]);
@@ -229,7 +229,7 @@ const InstitutionMasonry = ({
               style={{
                 backgroundImage: `url(${
                   item.images?.[0] ||
-                  "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800"
+                  "https://images.unsplash.com/photo-1546519638-68e109498ffc?w=800&h=600&fit=crop&q=80"
                 })`,
               }}
             />

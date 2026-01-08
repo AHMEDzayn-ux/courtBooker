@@ -12,9 +12,9 @@ export default function InstitutionHeader({ institution }) {
     institution.images && institution.images.length > 0
       ? institution.images
       : [
-          "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1920&q=80",
-          "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1920&q=80",
-          "https://images.unsplash.com/photo-1587384474964-3a06ce1ce699?w=1920&q=80",
+          "https://images.unsplash.com/photo-1461896836934-ffe607ba8211?w=1920&h=400&fit=crop&q=80",
+          "https://images.unsplash.com/photo-1554068865-24cecd4e34b8?w=1920&h=400&fit=crop&q=80",
+          "https://images.unsplash.com/photo-1587384474964-3a06ce1ce699?w=1920&h=400&fit=crop&q=80",
         ];
 
   useEffect(() => {

@@ -148,7 +148,6 @@ export async function POST(request) {
       }
     } catch (e) {
       // Rate limiting function might not exist - continue without it
-      console.log("Rate limiting not available:", e.message);
     }
 
     // 3. Verify court exists and is enabled (prevent tampering)

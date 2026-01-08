@@ -72,12 +72,6 @@ export default function BookingSteps({
     setLoading(true);
     const supabase = createClient();
 
-    console.log("Fetching bookings for:", {
-      court_id: court.id,
-      booking_date: selectedDate,
-      court_name: court.name,
-    });
-
     // Fetch regular bookings
     const { data: bookings, error } = await supabase
       .from("bookings")
@@ -86,8 +80,6 @@ export default function BookingSteps({
       .eq("booking_date", selectedDate)
       .eq("status", "confirmed");
 
-    console.log("Fetched bookings:", bookings, "Error:", error);
-
     // Fetch unavailable slots
     const { data: unavailableSlots, error: unavailableError } = await supabase
       .from("court_unavailability")
@@ -95,28 +87,15 @@ export default function BookingSteps({
       .eq("court_id", court.id)
       .eq("unavailable_date", selectedDate);
 
-    console.log(
-      "Fetched unavailable slots:",
-      unavailableSlots,
-      "Error:",
-      unavailableError
-    );
-
     if (
       (bookings && bookings.length > 0) ||
       (unavailableSlots && unavailableSlots.length > 0)
     ) {
-      console.log("Marking slots as booked or unavailable...");
       setSlots((prevSlots) =>
         prevSlots.map((slot) => {
           const isBooked = bookings?.some((booking) => {
             const matches =
               slot.time >= booking.start_time && slot.time < booking.end_time;
-            if (matches) {
-              console.log(
-                `Slot ${slot.time} is booked by booking ${booking.start_time}-${booking.end_time}`
-              );
-            }
             return matches;
           });
 
@@ -135,16 +114,12 @@ export default function BookingSteps({
           };
         })
       );
-    } else {
-      console.log(
-        "No bookings or unavailable slots found - all slots available"
-      );
     }
 
     setLoading(false);
   };
 
-  const handleSlotClick = (slot) => {
+  const handleSlotClick = (slot, e) => {
     if (slot.booked) return;
 
     const slotIndex = slots.findIndex((s) => s.time === slot.time);
@@ -188,6 +163,9 @@ export default function BookingSteps({
               )
             );
           }
+        } else {
+          // Not adjacent - start fresh selection with this slot
+          setSelectedSlots([slot]);
         }
       }
     }
@@ -200,7 +178,20 @@ export default function BookingSteps({
     setSelectedSlots([]);
   };
 
-  const handleMouseDown = (slot) => {
+  const handleMouseDown = (slot, e) => {
+    // Only handle actual mouse events, not touch (touch will use onClick)
+    if (e.pointerType === "touch" || e.nativeEvent?.pointerType === "touch") {
+      return;
+    }
+    // Also check if it's a touch event masquerading as mouse
+    if (
+      window.matchMedia("(pointer: coarse)").matches &&
+      e.type === "mousedown"
+    ) {
+      // On touch devices, let onClick handle it instead
+      return;
+    }
+
     if (slot.booked) return;
     setIsDragging(true);
     setDragStartSlot(slot);
@@ -230,6 +221,51 @@ export default function BookingSteps({
   };
 
   const handleMouseUp = () => {
+    setIsDragging(false);
+    setDragStartSlot(null);
+  };
+
+  // Touch event handlers for drag selection
+  const handleTouchStart = (slot, e) => {
+    if (slot.booked) return;
+    e.preventDefault(); // Prevent scroll while dragging
+    setIsDragging(true);
+    setDragStartSlot(slot);
+    setSelectedSlots([slot]);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDragging || !dragStartSlot) return;
+    e.preventDefault(); // Prevent scroll while dragging
+
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+    const slotButton = element?.closest("button[data-slot-time]");
+
+    if (slotButton && slotButton.dataset.slotTime) {
+      const slotTime = slotButton.dataset.slotTime;
+      const slot = slots.find((s) => s.time === slotTime);
+
+      if (slot && !slot.booked) {
+        const currentSlotIndex = slots.findIndex((s) => s.time === slot.time);
+        const startSlotIndex = slots.findIndex(
+          (s) => s.time === dragStartSlot.time
+        );
+
+        const start = Math.min(currentSlotIndex, startSlotIndex);
+        const end = Math.max(currentSlotIndex, startSlotIndex);
+
+        const rangeSlots = slots.slice(start, end + 1);
+        const allAvailable = rangeSlots.every((s) => !s.booked);
+
+        if (allAvailable) {
+          setSelectedSlots(rangeSlots);
+        }
+      }
+    }
+  };
+
+  const handleTouchEnd = () => {
     setIsDragging(false);
     setDragStartSlot(null);
   };
@@ -509,53 +545,67 @@ export default function BookingSteps({
               ) : (
                 <>
                   <div
-                    className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-3"
+                    className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-3 select-none"
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
+                    onTouchMove={handleTouchMove}
+                    onTouchEnd={handleTouchEnd}
                   >
-                    {slots.map((slot) => (
-                      <button
-                        key={slot.time}
-                        onClick={() => handleSlotClick(slot)}
-                        onMouseDown={() => handleMouseDown(slot)}
-                        onMouseEnter={() => handleMouseEnter(slot)}
-                        disabled={slot.booked || slot.unavailable}
-                        title={
-                          slot.unavailable
-                            ? `Unavailable: ${
-                                slot.unavailableReason ||
-                                "Reserved by management"
-                              }`
-                            : slot.booked
-                            ? "Already booked"
-                            : "Available"
-                        }
-                        className={`p-2 text-xs font-bold rounded-md transition-all select-none ${
-                          selectedSlots.find((s) => s.time === slot.time)
-                            ? "bg-slate-800 text-white shadow-md"
-                            : slot.unavailable
-                            ? "bg-orange-50 text-orange-700 cursor-not-allowed border border-orange-300 relative"
-                            : slot.booked
-                            ? "bg-red-50 text-red-600 cursor-not-allowed opacity-60 border border-red-200"
-                            : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-300 hover:shadow-sm"
-                        }`}
-                      >
-                        {slot.displayTime}
-                        {slot.unavailable && (
-                          <svg
-                            className="w-3 h-3 absolute top-0.5 right-0.5"
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </button>
-                    ))}
+                    {slots.map((slot) => {
+                      const isSelected = selectedSlots.find(
+                        (s) => s.time === slot.time
+                      );
+                      return (
+                        <button
+                          key={slot.time}
+                          data-slot-time={slot.time}
+                          onClick={(e) => handleSlotClick(slot, e)}
+                          onMouseDown={(e) => handleMouseDown(slot, e)}
+                          onMouseEnter={() => handleMouseEnter(slot)}
+                          onTouchStart={(e) => handleTouchStart(slot, e)}
+                          disabled={slot.booked || slot.unavailable}
+                          title={
+                            slot.unavailable
+                              ? `Unavailable: ${
+                                  slot.unavailableReason ||
+                                  "Reserved by management"
+                                }`
+                              : slot.booked
+                              ? "Already booked"
+                              : "Available"
+                          }
+                          style={
+                            isSelected
+                              ? { backgroundColor: "#1e293b", color: "white" }
+                              : {}
+                          }
+                          className={`p-2 text-xs font-bold rounded-md transition-all select-none ${
+                            isSelected
+                              ? "bg-slate-800 text-white shadow-md"
+                              : slot.unavailable
+                              ? "bg-orange-50 text-orange-700 cursor-not-allowed border border-orange-300 relative"
+                              : slot.booked
+                              ? "bg-red-50 text-red-600 cursor-not-allowed opacity-60 border border-red-200"
+                              : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-300 hover:shadow-sm"
+                          }`}
+                        >
+                          {slot.displayTime}
+                          {slot.unavailable && (
+                            <svg
+                              className="w-3 h-3 absolute top-0.5 right-0.5"
+                              fill="currentColor"
+                              viewBox="0 0 20 20"
+                            >
+                              <path
+                                fillRule="evenodd"
+                                d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                                clipRule="evenodd"
+                              />
+                            </svg>
+                          )}
+                        </button>
+                      );
+                    })}
                   </div>
 
                   {/* Legend */}

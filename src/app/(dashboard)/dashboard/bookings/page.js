@@ -95,15 +95,11 @@ export default function BookingsPage() {
           filter: `institution_id=eq.${instId}`,
         },
         (payload) => {
-          console.log("Real-time booking change:", payload);
-
           // Refresh bookings when any change occurs
           fetchBookings();
         }
       )
-      .subscribe((status) => {
-        console.log("Dashboard real-time subscription:", status);
-      });
+      .subscribe();
 
     channelRef.current = channel;
   };
