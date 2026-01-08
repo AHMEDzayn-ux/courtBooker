@@ -148,7 +148,7 @@ BEGIN
   -- 6. Generate unique reference ID with collision check
   LOOP
     v_reference_id := 'BK' || LPAD(FLOOR(RANDOM() * 100000000)::TEXT, 8, '0');
-    EXIT WHEN NOT EXISTS (SELECT 1 FROM bookings WHERE reference_id = v_reference_id);
+    EXIT WHEN NOT EXISTS (SELECT 1 FROM bookings WHERE bookings.reference_id = v_reference_id);
   END LOOP;
 
   -- 7. Insert the booking

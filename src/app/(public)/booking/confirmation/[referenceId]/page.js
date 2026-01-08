@@ -21,7 +21,20 @@ export default function BookingConfirmationPage() {
         .from("bookings")
         .select(
           `
-          *,
+          id,
+          court_id,
+          institution_id,
+          booking_date,
+          start_time,
+          end_time,
+          sport_id,
+          total_price,
+          customer_name,
+          customer_phone,
+          customer_email,
+          status,
+          reference_id,
+          created_at,
           sports (
             name
           ),
@@ -35,7 +48,7 @@ export default function BookingConfirmationPage() {
           )
         `
         )
-        .eq("bookings.reference_id", params.referenceId)
+        .eq("reference_id", params.referenceId)
         .single();
 
       if (error || !data) {

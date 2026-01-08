@@ -32,7 +32,20 @@ export default function TrackBookingPage() {
         .from("bookings")
         .select(
           `
-          *,
+          id,
+          court_id,
+          institution_id,
+          booking_date,
+          start_time,
+          end_time,
+          sport_id,
+          total_price,
+          customer_name,
+          customer_phone,
+          customer_email,
+          status,
+          reference_id,
+          created_at,
           sports (name),
           courts (
             name,
@@ -46,6 +59,7 @@ export default function TrackBookingPage() {
       // Add filters based on what's provided
       if (referenceId.trim()) {
         query = query.eq("reference_id", referenceId.trim().toUpperCase());
+        );
       }
       if (phone.trim()) {
         query = query.eq("customer_phone", phone.trim());
