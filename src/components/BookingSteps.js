@@ -58,6 +58,8 @@ export default function BookingSteps({
         )}`,
         available: true,
         booked: false,
+        unavailable: false,
+        unavailableReason: null,
       });
 
       currentTime += court.slot_duration_minutes;
@@ -76,6 +78,7 @@ export default function BookingSteps({
       court_name: court.name,
     });
 
+    // Fetch regular bookings
     const { data: bookings, error } = await supabase
       .from("bookings")
       .select("start_time, end_time, customer_name")
@@ -85,11 +88,28 @@ export default function BookingSteps({
 
     console.log("Fetched bookings:", bookings, "Error:", error);
 
-    if (bookings && bookings.length > 0) {
-      console.log("Marking slots as booked...");
+    // Fetch unavailable slots
+    const { data: unavailableSlots, error: unavailableError } = await supabase
+      .from("court_unavailability")
+      .select("start_time, end_time, reason")
+      .eq("court_id", court.id)
+      .eq("unavailable_date", selectedDate);
+
+    console.log(
+      "Fetched unavailable slots:",
+      unavailableSlots,
+      "Error:",
+      unavailableError
+    );
+
+    if (
+      (bookings && bookings.length > 0) ||
+      (unavailableSlots && unavailableSlots.length > 0)
+    ) {
+      console.log("Marking slots as booked or unavailable...");
       setSlots((prevSlots) =>
         prevSlots.map((slot) => {
-          const isBooked = bookings.some((booking) => {
+          const isBooked = bookings?.some((booking) => {
             const matches =
               slot.time >= booking.start_time && slot.time < booking.end_time;
             if (matches) {
@@ -99,15 +119,26 @@ export default function BookingSteps({
             }
             return matches;
           });
+
+          const unavailableMatch = unavailableSlots?.find(
+            (unavailable) =>
+              slot.time >= unavailable.start_time &&
+              slot.time < unavailable.end_time
+          );
+
           return {
             ...slot,
-            available: !isBooked,
+            available: !isBooked && !unavailableMatch,
             booked: isBooked,
+            unavailable: !!unavailableMatch,
+            unavailableReason: unavailableMatch?.reason || null,
           };
         })
       );
     } else {
-      console.log("No bookings found - all slots available");
+      console.log(
+        "No bookings or unavailable slots found - all slots available"
+      );
     }
 
     setLoading(false);
@@ -488,16 +519,41 @@ export default function BookingSteps({
                         onClick={() => handleSlotClick(slot)}
                         onMouseDown={() => handleMouseDown(slot)}
                         onMouseEnter={() => handleMouseEnter(slot)}
-                        disabled={slot.booked}
+                        disabled={slot.booked || slot.unavailable}
+                        title={
+                          slot.unavailable
+                            ? `Unavailable: ${
+                                slot.unavailableReason ||
+                                "Reserved by management"
+                              }`
+                            : slot.booked
+                            ? "Already booked"
+                            : "Available"
+                        }
                         className={`p-2 text-xs font-bold rounded-md transition-all select-none ${
                           selectedSlots.find((s) => s.time === slot.time)
                             ? "bg-slate-800 text-white shadow-md"
+                            : slot.unavailable
+                            ? "bg-orange-50 text-orange-700 cursor-not-allowed border border-orange-300 relative"
                             : slot.booked
-                            ? "bg-red-50 text-red-600 cursor-not-allowed  opacity-60 border border-red-200"
+                            ? "bg-red-50 text-red-600 cursor-not-allowed opacity-60 border border-red-200"
                             : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-300 hover:shadow-sm"
                         }`}
                       >
                         {slot.displayTime}
+                        {slot.unavailable && (
+                          <svg
+                            className="w-3 h-3 absolute top-0.5 right-0.5"
+                            fill="currentColor"
+                            viewBox="0 0 20 20"
+                          >
+                            <path
+                              fillRule="evenodd"
+                              d="M13.477 14.89A6 6 0 015.11 6.524l8.367 8.368zm1.414-1.414L6.524 5.11a6 6 0 018.367 8.367zM18 10a8 8 0 11-16 0 8 8 0 0116 0z"
+                              clipRule="evenodd"
+                            />
+                          </svg>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -518,7 +574,13 @@ export default function BookingSteps({
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-red-50 border border-red-200 rounded mr-1.5"></div>
-                      <span className="text-slate-800 font-medium">Unavailable</span>
+                      <span className="text-slate-800 font-medium">Booked</span>
+                    </div>
+                    <div className="flex items-center">
+                      <div className="w-3 h-3 bg-orange-50 border border-orange-300 rounded mr-1.5"></div>
+                      <span className="text-slate-800 font-medium">
+                        Unavailable
+                      </span>
                     </div>
                   </div>
                 </>
