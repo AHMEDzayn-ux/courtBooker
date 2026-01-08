@@ -35,7 +35,7 @@ export default function BookingConfirmationPage() {
           )
         `
         )
-        .eq("reference_id", params.referenceId)
+        .eq("bookings.reference_id", params.referenceId)
         .single();
 
       if (error || !data) {
@@ -83,7 +83,9 @@ export default function BookingConfirmationPage() {
           <h1 className="text-3xl font-bold text-slate-900 mb-2">
             Booking Confirmed!
           </h1>
-          <p className="text-slate-600">You will receive a confirmation SMS shortly</p>
+          <p className="text-slate-600">
+            You will receive a confirmation SMS shortly
+          </p>
         </div>
 
         {/* Reference ID */}
@@ -155,7 +157,9 @@ export default function BookingConfirmationPage() {
             </div>
             <div>
               <p className="text-sm text-slate-600">Court</p>
-              <p className="font-medium text-slate-900">{booking.courts.name}</p>
+              <p className="font-medium text-slate-900">
+                {booking.courts.name}
+              </p>
             </div>
             <div>
               <p className="text-sm text-slate-600">Sport</p>
