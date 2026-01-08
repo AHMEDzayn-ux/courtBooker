@@ -97,8 +97,7 @@ export default function InstitutionRegisterPage() {
       color: "blue",
       title: "Easy Booking",
       desc: "Accept bookings 24/7 through an easy-to-use online platform. No more phone calls.",
-    },
-    {
+    },    {
       icon: Bell,
       color: "orange",
       title: "Instant SMS Alerts",
@@ -109,6 +108,12 @@ export default function InstitutionRegisterPage() {
       color: "emerald",
       title: "Revenue Analytics",
       desc: "Track your earnings, popular time slots, and booking trends with clean charts.",
+    },
+    {
+      icon: Clock,
+      color: "purple",
+      title: "Smart Scheduling",
+      desc: "Flexible time slots, block unavailable times, and manage multiple courts easily.",
     },
 
     {
@@ -264,6 +269,7 @@ export default function InstitutionRegisterPage() {
               alt="Sports Facility"
               className="w-full h-full object-cover opacity-40 blur-[2px]"
             />
+
           </div>
 
           <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-20 pb-32">
@@ -287,10 +293,10 @@ export default function InstitutionRegisterPage() {
 
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 animate-slideUp tracking-tight shadow-black drop-shadow-lg">
                   Still Managing Bookings Manually? <br />
-                  {/* UPDATED: Metallic Slate Gradient */}
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-300 via-slate-100 to-slate-300 pb-2">
-                    It’s Time to Upgrade.
-                  </span>
+                  {/* UPDATED: Slate Theme Gradient */}
+<span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-400 via-white to-slate-400 pb-1">
+  It’s Time to Upgrade.
+</span>
                 </h1>
 
                 <p
