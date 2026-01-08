@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 
@@ -26,6 +26,7 @@ export default function BookingSteps({
     customerEmail: "",
   });
   const [error, setError] = useState("");
+  const gridRef = useRef(null);
 
   useEffect(() => {
     if (currentStep === 1 && selectedSport && selectedDate) {
@@ -33,6 +34,18 @@ export default function BookingSteps({
       fetchBookings();
     }
   }, [selectedDate, court.id, selectedSport, currentStep]);
+
+  useEffect(() => {
+    const gridElement = gridRef.current;
+    if (gridElement) {
+      gridElement.addEventListener("touchmove", handleTouchMove, {
+        passive: false,
+      });
+      return () => {
+        gridElement.removeEventListener("touchmove", handleTouchMove);
+      };
+    }
+  }, [isDragging, dragStartSlot, slots, selectedSlots]);
 
   const generateSlots = () => {
     const slots = [];
@@ -545,10 +558,10 @@ export default function BookingSteps({
               ) : (
                 <>
                   <div
+                    ref={gridRef}
                     className="grid grid-cols-4 sm:grid-cols-5 md:grid-cols-6 lg:grid-cols-8 gap-2 mb-3 select-none"
                     onMouseUp={handleMouseUp}
                     onMouseLeave={handleMouseUp}
-                    onTouchMove={handleTouchMove}
                     onTouchEnd={handleTouchEnd}
                   >
                     {slots.map((slot) => {
