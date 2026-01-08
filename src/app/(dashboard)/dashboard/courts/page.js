@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
 import BlockSlotsModal from "@/components/BlockSlotsModal";
@@ -29,11 +29,7 @@ export default function CourtsPage() {
     selectedSports: [],
   });
 
-  useEffect(() => {
-    fetchData();
-  }, []);
-
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     const supabase = createClient();
     const {
       data: { user },
@@ -65,7 +61,11 @@ export default function CourtsPage() {
 
     setInstitutionId(adminData?.institution_id);
     setLoading(false);
-  };
+  }, [router]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -211,8 +211,7 @@ export default function CourtsPage() {
           slot_duration_minutes: court.slot_duration_minutes,
           price_per_slot: court.price_per_slot,
           is_enabled: !court.is_enabled,
-          selectedSports:
-            court.court_sports?.map((cs) => cs.sport_id) || [],
+          selectedSports: court.court_sports?.map((cs) => cs.sport_id) || [],
         }),
       });
 
@@ -279,7 +278,6 @@ export default function CourtsPage() {
                 {/* Main Content Area */}
                 <div className="p-5 sm:p-6">
                   <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4">
-                    
                     {/* Left: Info */}
                     <div className="flex-1">
                       <div className="flex items-center gap-3 mb-2">
@@ -312,14 +310,15 @@ export default function CourtsPage() {
                       {/* Stats Grid */}
                       <div className="flex flex-wrap items-center gap-x-8 gap-y-2 text-sm text-gray-600">
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-400">🕒</span>
-                           <span className="font-medium text-gray-900">
-                              {court.opening_time.substring(0, 5)} - {court.closing_time.substring(0, 5)}
-                           </span>
+                          <span className="text-gray-400">🕒</span>
+                          <span className="font-medium text-gray-900">
+                            {court.opening_time.substring(0, 5)} -{" "}
+                            {court.closing_time.substring(0, 5)}
+                          </span>
                         </div>
                         <div className="flex items-center gap-2">
-                            <span className="text-gray-400">⏱️</span>
-                            <span>{court.slot_duration_minutes} min slots</span>
+                          <span className="text-gray-400">⏱️</span>
+                          <span>{court.slot_duration_minutes} min slots</span>
                         </div>
                       </div>
                     </div>
@@ -330,7 +329,9 @@ export default function CourtsPage() {
                         Price Per Slot
                       </p>
                       <p className="text-xl font-bold text-gray-900">
-                        <span className="text-sm font-normal text-gray-500 mr-1">LKR</span>
+                        <span className="text-sm font-normal text-gray-500 mr-1">
+                          LKR
+                        </span>
                         {parseFloat(court.price_per_slot).toFixed(2)}
                       </p>
                     </div>
@@ -339,47 +340,47 @@ export default function CourtsPage() {
 
                 {/* Footer / Actions Toolbar */}
                 <div className="bg-gray-50 border-t border-gray-100 px-5 py-3 flex flex-wrap items-center justify-between gap-3">
+                  <button
+                    onClick={() => {
+                      setSelectedCourtForBlocking(court);
+                      setShowBlockSlotsModal(true);
+                    }}
+                    className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white px-3 py-1.5 rounded-md transition-colors border border-transparent hover:border-gray-200 hover:shadow-sm"
+                  >
+                    📅 Manage Slots
+                  </button>
+
+                  <div className="flex items-center gap-2 ml-auto">
                     <button
-                        onClick={() => {
-                        setSelectedCourtForBlocking(court);
-                        setShowBlockSlotsModal(true);
-                        }}
-                        className="text-sm font-medium text-gray-700 hover:text-gray-900 hover:bg-white px-3 py-1.5 rounded-md transition-colors border border-transparent hover:border-gray-200 hover:shadow-sm"
+                      onClick={() => toggleCourtStatus(court)}
+                      className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
+                        court.is_enabled
+                          ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                          : "text-green-600 hover:text-green-700 hover:bg-green-50"
+                      }`}
                     >
-                        📅 Manage Slots
+                      {court.is_enabled ? "Disable" : "Enable"}
                     </button>
 
-                    <div className="flex items-center gap-2 ml-auto">
-                        <button
-                            onClick={() => toggleCourtStatus(court)}
-                            className={`text-sm font-medium px-3 py-1.5 rounded-md transition-colors ${
-                                court.is_enabled 
-                                ? "text-amber-600 hover:text-amber-700 hover:bg-amber-50"
-                                : "text-green-600 hover:text-green-700 hover:bg-green-50"
-                            }`}
-                        >
-                            {court.is_enabled ? "Disable" : "Enable"}
-                        </button>
-                        
-                        <div className="w-px h-4 bg-gray-300 mx-1"></div>
+                    <div className="w-px h-4 bg-gray-300 mx-1"></div>
 
-                        <button
-                            onClick={() => openEditModal(court)}
-                            className="text-sm font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors"
-                        >
-                            Edit
-                        </button>
+                    <button
+                      onClick={() => openEditModal(court)}
+                      className="text-sm font-medium text-blue-600 hover:text-blue-700 px-3 py-1.5 rounded-md hover:bg-blue-50 transition-colors"
+                    >
+                      Edit
+                    </button>
 
-                        <button
-                            onClick={() => {
-                                setCourtToDelete(court.id);
-                                setShowDeleteModal(true);
-                            }}
-                            className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors"
-                        >
-                            Delete
-                        </button>
-                    </div>
+                    <button
+                      onClick={() => {
+                        setCourtToDelete(court.id);
+                        setShowDeleteModal(true);
+                      }}
+                      className="text-sm font-medium text-red-600 hover:text-red-700 px-3 py-1.5 rounded-md hover:bg-red-50 transition-colors"
+                    >
+                      Delete
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -394,151 +395,167 @@ export default function CourtsPage() {
             <div className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
               <div className="p-6 border-b border-gray-100">
                 <h2 className="text-xl font-bold text-gray-900">
-                    {editingCourt ? "Edit Court Details" : "Add New Court"}
+                  {editingCourt ? "Edit Court Details" : "Add New Court"}
                 </h2>
               </div>
-              
+
               <div className="p-6">
                 <form onSubmit={handleSubmit}>
-                    <div className="space-y-6">
-                        {/* Name Section */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-1.5">
-                                Court Name
+                  <div className="space-y-6">
+                    {/* Name Section */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                        Court Name
+                      </label>
+                      <input
+                        type="text"
+                        name="name"
+                        value={formData.name}
+                        onChange={handleInputChange}
+                        required
+                        className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
+                        placeholder="e.g. Badminton Court 1"
+                      />
+                    </div>
+
+                    {/* Timing Grid */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">
+                          Schedule
+                        </h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Opening Time
                             </label>
                             <input
-                                type="text"
-                                name="name"
-                                value={formData.name}
-                                onChange={handleInputChange}
-                                required
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-gray-900 focus:border-transparent transition-all outline-none"
-                                placeholder="e.g. Badminton Court 1"
+                              type="time"
+                              name="opening_time"
+                              value={formData.opening_time}
+                              onChange={handleInputChange}
+                              required
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
                             />
-                        </div>
-
-                        {/* Timing Grid */}
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">Schedule</h3>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Opening Time</label>
-                                        <input
-                                            type="time"
-                                            name="opening_time"
-                                            value={formData.opening_time}
-                                            onChange={handleInputChange}
-                                            required
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Closing Time</label>
-                                        <input
-                                            type="time"
-                                            name="closing_time"
-                                            value={formData.closing_time}
-                                            onChange={handleInputChange}
-                                            required
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                                <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">Booking Rules</h3>
-                                <div className="space-y-3">
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Slot Duration (min)</label>
-                                        <input
-                                            type="number"
-                                            name="slot_duration_minutes"
-                                            value={formData.slot_duration_minutes}
-                                            onChange={handleInputChange}
-                                            required
-                                            min="15"
-                                            step="15"
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                                        />
-                                    </div>
-                                    <div>
-                                        <label className="block text-xs font-medium text-gray-600 mb-1">Price per Slot (LKR)</label>
-                                        <input
-                                            type="number"
-                                            name="price_per_slot"
-                                            value={formData.price_per_slot}
-                                            onChange={handleInputChange}
-                                            required
-                                            min="0"
-                                            step="0.01"
-                                            className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                                        />
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Sports Selection */}
-                        <div>
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                Supported Sports
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Closing Time
                             </label>
-                            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                {sports.map((sport) => (
-                                    <label
-                                        key={sport.id}
-                                        className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
-                                            formData.selectedSports.includes(sport.id)
-                                                ? "bg-blue-50 border-blue-200 text-blue-800"
-                                                : "bg-white border-gray-200 hover:bg-gray-50"
-                                        }`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={formData.selectedSports.includes(sport.id)}
-                                            onChange={() => handleSportToggle(sport.id)}
-                                            className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                                        />
-                                        <span className="ml-2 text-sm font-medium">{sport.name}</span>
-                                    </label>
-                                ))}
-                            </div>
+                            <input
+                              type="time"
+                              name="closing_time"
+                              value={formData.closing_time}
+                              onChange={handleInputChange}
+                              required
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                            />
+                          </div>
                         </div>
+                      </div>
 
-                        {/* Status Checkbox */}
-                        <div className="pt-2">
-                             <label className="flex items-center space-x-3 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    name="is_enabled"
-                                    checked={formData.is_enabled}
-                                    onChange={handleInputChange}
-                                    className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
-                                />
-                                <span className="text-sm text-gray-700 group-hover:text-gray-900">
-                                    Make this court active immediately
-                                </span>
+                      <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                        <h3 className="text-xs font-bold text-gray-500 uppercase mb-3">
+                          Booking Rules
+                        </h3>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Slot Duration (min)
                             </label>
+                            <input
+                              type="number"
+                              name="slot_duration_minutes"
+                              value={formData.slot_duration_minutes}
+                              onChange={handleInputChange}
+                              required
+                              min="15"
+                              step="15"
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-medium text-gray-600 mb-1">
+                              Price per Slot (LKR)
+                            </label>
+                            <input
+                              type="number"
+                              name="price_per_slot"
+                              value={formData.price_per_slot}
+                              onChange={handleInputChange}
+                              required
+                              min="0"
+                              step="0.01"
+                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
+                            />
+                          </div>
                         </div>
+                      </div>
                     </div>
 
-                    <div className="flex gap-3 mt-8 pt-4 border-t border-gray-100">
-                        <button
-                            type="button"
-                            onClick={() => setShowModal(false)}
-                            className="flex-1 bg-white text-gray-700 border border-gray-300 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
-                        >
-                            Cancel
-                        </button>
-                        <button
-                            type="submit"
-                            className="flex-1 bg-gray-900 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-sm text-sm"
-                        >
-                            {editingCourt ? "Save Changes" : "Create Court"}
-                        </button>
+                    {/* Sports Selection */}
+                    <div>
+                      <label className="block text-sm font-semibold text-gray-700 mb-3">
+                        Supported Sports
+                      </label>
+                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                        {sports.map((sport) => (
+                          <label
+                            key={sport.id}
+                            className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
+                              formData.selectedSports.includes(sport.id)
+                                ? "bg-blue-50 border-blue-200 text-blue-800"
+                                : "bg-white border-gray-200 hover:bg-gray-50"
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={formData.selectedSports.includes(
+                                sport.id
+                              )}
+                              onChange={() => handleSportToggle(sport.id)}
+                              className="w-4 h-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                            />
+                            <span className="ml-2 text-sm font-medium">
+                              {sport.name}
+                            </span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
+
+                    {/* Status Checkbox */}
+                    <div className="pt-2">
+                      <label className="flex items-center space-x-3 cursor-pointer group">
+                        <input
+                          type="checkbox"
+                          name="is_enabled"
+                          checked={formData.is_enabled}
+                          onChange={handleInputChange}
+                          className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                        />
+                        <span className="text-sm text-gray-700 group-hover:text-gray-900">
+                          Make this court active immediately
+                        </span>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 mt-8 pt-4 border-t border-gray-100">
+                    <button
+                      type="button"
+                      onClick={() => setShowModal(false)}
+                      className="flex-1 bg-white text-gray-700 border border-gray-300 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      className="flex-1 bg-gray-900 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-sm text-sm"
+                    >
+                      {editingCourt ? "Save Changes" : "Create Court"}
+                    </button>
+                  </div>
                 </form>
               </div>
             </div>
@@ -564,52 +581,54 @@ export default function CourtsPage() {
         {showDeleteModal && (
           <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
             <div className="bg-white rounded-xl shadow-2xl max-w-md w-full overflow-hidden">
-                <div className="p-6">
-                    <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
-                        <span className="text-xl">⚠️</span>
-                    </div>
-                    <h2 className="text-xl font-bold text-gray-900 mb-2">
-                        Delete Court?
-                    </h2>
-                    <p className="text-gray-600 text-sm mb-6">
-                        This action is permanent. All upcoming bookings associated with this court might be affected. Please enter your password to confirm.
-                    </p>
-                    
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
-                                Password Required
-                            </label>
-                            <input
-                                type="password"
-                                value={deletePassword}
-                                onChange={(e) => setDeletePassword(e.target.value)}
-                                className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
-                                placeholder="Enter your login password"
-                                autoFocus
-                            />
-                        </div>
-                        
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => {
-                                setShowDeleteModal(false);
-                                setDeletePassword("");
-                                setCourtToDelete(null);
-                                }}
-                                className="flex-1 bg-white text-gray-700 border border-gray-300 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                onClick={() => handleDelete(courtToDelete)}
-                                className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-red-700 shadow-sm transition-colors text-sm"
-                            >
-                                Delete Court
-                            </button>
-                        </div>
-                    </div>
+              <div className="p-6">
+                <div className="w-12 h-12 bg-red-100 rounded-full flex items-center justify-center mb-4">
+                  <span className="text-xl">⚠️</span>
                 </div>
+                <h2 className="text-xl font-bold text-gray-900 mb-2">
+                  Delete Court?
+                </h2>
+                <p className="text-gray-600 text-sm mb-6">
+                  This action is permanent. All upcoming bookings associated
+                  with this court might be affected. Please enter your password
+                  to confirm.
+                </p>
+
+                <div className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-1">
+                      Password Required
+                    </label>
+                    <input
+                      type="password"
+                      value={deletePassword}
+                      onChange={(e) => setDeletePassword(e.target.value)}
+                      className="w-full px-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none"
+                      placeholder="Enter your login password"
+                      autoFocus
+                    />
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => {
+                        setShowDeleteModal(false);
+                        setDeletePassword("");
+                        setCourtToDelete(null);
+                      }}
+                      className="flex-1 bg-white text-gray-700 border border-gray-300 py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-50 transition-colors text-sm"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      onClick={() => handleDelete(courtToDelete)}
+                      className="flex-1 bg-red-600 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-red-700 shadow-sm transition-colors text-sm"
+                    >
+                      Delete Court
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         )}

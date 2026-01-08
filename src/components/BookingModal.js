@@ -1,39 +1,98 @@
-'use client'
+"use client";
 
-import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 
-export default function BookingModal({ 
-  court, 
-  institutionId, 
-  bookingDate, 
-  startTime, 
-  endTime, 
+// Phone number formatting helper
+function formatPhoneNumber(value) {
+  // Remove all non-digits
+  const digits = value.replace(/\D/g, "");
+
+  // Limit to 10 digits
+  const limited = digits.slice(0, 10);
+
+  // Format as 0XX XXX XXXX
+  if (limited.length >= 7) {
+    return `${limited.slice(0, 3)} ${limited.slice(3, 6)} ${limited.slice(6)}`;
+  } else if (limited.length >= 3) {
+    return `${limited.slice(0, 3)} ${limited.slice(3)}`;
+  }
+  return limited;
+}
+
+export default function BookingModal({
+  court,
+  institutionId,
+  bookingDate,
+  startTime,
+  endTime,
   selectedSportId,
   selectedSportName,
   totalPrice,
-  onClose, 
-  onSuccess 
+  onClose,
+  onSuccess,
 }) {
-  const router = useRouter()
+  const router = useRouter();
   const [formData, setFormData] = useState({
-    customerName: '',
-    customerPhone: '',
-    customerEmail: ''
-  })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+    customerName: "",
+    customerPhone: "",
+    customerEmail: "",
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  // Client-side validation
+  const validateForm = () => {
+    const errors = {};
+
+    // Name validation
+    if (!formData.customerName.trim()) {
+      errors.customerName = "Name is required";
+    } else if (formData.customerName.trim().length < 2) {
+      errors.customerName = "Name must be at least 2 characters";
+    } else if (!/^[a-zA-Z\s.\-']+$/.test(formData.customerName)) {
+      errors.customerName = "Name contains invalid characters";
+    }
+
+    // Phone validation (Sri Lankan format)
+    const phone = formData.customerPhone.replace(/\s/g, "");
+    if (!phone) {
+      errors.customerPhone = "Phone number is required";
+    } else if (!/^0[0-9]{9}$/.test(phone)) {
+      errors.customerPhone = "Enter valid 10-digit number (e.g., 077 123 4567)";
+    }
+
+    // Email validation (optional)
+    if (
+      formData.customerEmail &&
+      !/^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/.test(
+        formData.customerEmail
+      )
+    ) {
+      errors.customerEmail = "Enter a valid email address";
+    }
+
+    setFieldErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-    setError('')
+    e.preventDefault();
+
+    // Validate before submitting
+    if (!validateForm()) {
+      return;
+    }
+
+    setLoading(true);
+    setError("");
 
     try {
-      const response = await fetch('/api/bookings', {
-        method: 'POST',
+      const response = await fetch("/api/bookings", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           courtId: court.id,
@@ -43,23 +102,44 @@ export default function BookingModal({
           endTime,
           sportId: selectedSportId,
           totalPrice,
-          ...formData
+          customerName: formData.customerName.trim(),
+          customerPhone: formData.customerPhone.replace(/\s/g, ""),
+          customerEmail: formData.customerEmail.trim() || null,
         }),
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || 'Failed to create booking')
+        // Handle specific error codes
+        if (response.status === 409) {
+          throw new Error(
+            "This time slot was just booked. Please go back and select a different time."
+          );
+        } else if (response.status === 429) {
+          throw new Error(
+            "Too many booking attempts. Please wait a few minutes and try again."
+          );
+        }
+        throw new Error(data.error || "Failed to create booking");
       }
 
       // Redirect to confirmation page
-      router.push(`/booking/confirmation/${data.referenceId}`)
+      router.push(`/booking/confirmation/${data.referenceId}`);
     } catch (err) {
-      setError(err.message)
-      setLoading(false)
+      setError(err.message);
+      setLoading(false);
     }
-  }
+  };
+
+  const handlePhoneChange = (e) => {
+    const formatted = formatPhoneNumber(e.target.value);
+    setFormData({ ...formData, customerPhone: formatted });
+    // Clear error on change
+    if (fieldErrors.customerPhone) {
+      setFieldErrors({ ...fieldErrors, customerPhone: "" });
+    }
+  };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -70,8 +150,18 @@ export default function BookingModal({
             onClick={onClose}
             className="text-gray-400 hover:text-gray-600"
           >
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+            <svg
+              className="w-6 h-6"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M6 18L18 6M6 6l12 12"
+              />
             </svg>
           </button>
         </div>
@@ -80,35 +170,65 @@ export default function BookingModal({
         <div className="bg-gray-50 rounded-lg p-4 mb-6">
           <h3 className="font-semibold text-gray-900 mb-2">Booking Details</h3>
           <div className="space-y-1 text-sm text-gray-600">
-            <p><span className="font-medium">Court:</span> {court.name}</p>
-            <p><span className="font-medium">Sport:</span> {selectedSportName}</p>
-            <p><span className="font-medium">Date:</span> {new Date(bookingDate).toLocaleDateString()}</p>
-            <p><span className="font-medium">Time:</span> {startTime.substring(0, 5)} - {endTime.substring(0, 5)}</p>
+            <p>
+              <span className="font-medium">Court:</span> {court.name}
+            </p>
+            <p>
+              <span className="font-medium">Sport:</span> {selectedSportName}
+            </p>
+            <p>
+              <span className="font-medium">Date:</span>{" "}
+              {new Date(bookingDate).toLocaleDateString()}
+            </p>
+            <p>
+              <span className="font-medium">Time:</span>{" "}
+              {startTime.substring(0, 5)} - {endTime.substring(0, 5)}
+            </p>
           </div>
           <div className="mt-3 pt-3 border-t">
-            <p className="text-lg font-bold text-green-600">Total: LKR {totalPrice.toFixed(2)}</p>
+            <p className="text-lg font-bold text-green-600">
+              Total: LKR {totalPrice.toFixed(2)}
+            </p>
           </div>
         </div>
 
         {/* Booking Form */}
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label htmlFor="customerName" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="customerName"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Full Name *
             </label>
             <input
               type="text"
               id="customerName"
               required
+              maxLength={100}
               value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => {
+                setFormData({ ...formData, customerName: e.target.value });
+                if (fieldErrors.customerName)
+                  setFieldErrors({ ...fieldErrors, customerName: "" });
+              }}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                fieldErrors.customerName ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="Enter your name"
             />
+            {fieldErrors.customerName && (
+              <p className="text-red-500 text-xs mt-1">
+                {fieldErrors.customerName}
+              </p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="customerPhone" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="customerPhone"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Phone Number *
             </label>
             <input
@@ -116,29 +236,63 @@ export default function BookingModal({
               id="customerPhone"
               required
               value={formData.customerPhone}
-              onChange={(e) => setFormData({ ...formData, customerPhone: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-              placeholder="Enter your phone number"
+              onChange={handlePhoneChange}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                fieldErrors.customerPhone ? "border-red-500" : "border-gray-300"
+              }`}
+              placeholder="077 123 4567"
             />
+            {fieldErrors.customerPhone && (
+              <p className="text-red-500 text-xs mt-1">
+                {fieldErrors.customerPhone}
+              </p>
+            )}
           </div>
 
           <div>
-            <label htmlFor="customerEmail" className="block text-sm font-medium text-gray-700 mb-1">
+            <label
+              htmlFor="customerEmail"
+              className="block text-sm font-medium text-gray-700 mb-1"
+            >
               Email (Optional)
             </label>
             <input
               type="email"
               id="customerEmail"
               value={formData.customerEmail}
-              onChange={(e) => setFormData({ ...formData, customerEmail: e.target.value })}
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              onChange={(e) => {
+                setFormData({ ...formData, customerEmail: e.target.value });
+                if (fieldErrors.customerEmail)
+                  setFieldErrors({ ...fieldErrors, customerEmail: "" });
+              }}
+              className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
+                fieldErrors.customerEmail ? "border-red-500" : "border-gray-300"
+              }`}
               placeholder="Enter your email"
             />
+            {fieldErrors.customerEmail && (
+              <p className="text-red-500 text-xs mt-1">
+                {fieldErrors.customerEmail}
+              </p>
+            )}
           </div>
 
           {error && (
-            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm">
-              {error}
+            <div className="bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-lg text-sm flex items-start gap-2">
+              <svg
+                className="w-5 h-5 flex-shrink-0 mt-0.5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+              <span>{error}</span>
             </div>
           )}
 
@@ -155,11 +309,11 @@ export default function BookingModal({
               disabled={loading}
               className="flex-1 bg-blue-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
             >
-              {loading ? 'Processing...' : 'Confirm Booking'}
+              {loading ? "Processing..." : "Confirm Booking"}
             </button>
           </div>
         </form>
       </div>
     </div>
-  )
+  );
 }

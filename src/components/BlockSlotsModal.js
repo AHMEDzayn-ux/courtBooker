@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 
 export default function BlockSlotsModal({ court, onClose, onSuccess }) {
@@ -14,15 +14,9 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
   const [dragStartSlot, setDragStartSlot] = useState(null);
   const [fetchingSlots, setFetchingSlots] = useState(false);
 
-  useEffect(() => {
-    if (selectedDate && court) {
-      generateSlots();
-      fetchExistingBlocksAndBookings();
-    }
-  }, [selectedDate, court]);
-
-  const generateSlots = () => {
-    const slots = [];
+  const generateSlots = useCallback(() => {
+    if (!court) return;
+    const newSlots = [];
     const [startHour, startMin] = court.opening_time.split(":").map(Number);
     const [endHour, endMin] = court.closing_time.split(":").map(Number);
 
@@ -37,7 +31,7 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
         "0"
       )}:00`;
 
-      slots.push({
+      newSlots.push({
         time: timeStr,
         displayTime: `${String(hour).padStart(2, "0")}:${String(min).padStart(
           2,
@@ -53,10 +47,11 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
       currentTime += court.slot_duration_minutes;
     }
 
-    setSlots(slots);
-  };
+    setSlots(newSlots);
+  }, [court]);
 
-  const fetchExistingBlocksAndBookings = async () => {
+  const fetchExistingBlocksAndBookings = useCallback(async () => {
+    if (!court || !selectedDate) return;
     setFetchingSlots(true);
     const supabase = createClient();
 
@@ -93,7 +88,14 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
       })
     );
     setFetchingSlots(false);
-  };
+  }, [court, selectedDate]);
+
+  useEffect(() => {
+    if (selectedDate && court) {
+      generateSlots();
+      fetchExistingBlocksAndBookings();
+    }
+  }, [selectedDate, court, generateSlots, fetchExistingBlocksAndBookings]);
 
   const handleSlotClick = (slot) => {
     if (mode === "block" && (slot.booked || slot.blocked)) return;
@@ -269,22 +271,23 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
   const activeThemeClass = isBlockMode
     ? "bg-amber-600 hover:bg-amber-700 text-white"
     : "bg-emerald-600 hover:bg-emerald-700 text-white";
-  
+
   const accentTextClass = isBlockMode ? "text-amber-700" : "text-emerald-700";
   const accentBgClass = isBlockMode ? "bg-amber-50" : "bg-emerald-50";
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl max-w-3xl w-full max-h-[90vh] overflow-y-auto shadow-2xl flex flex-col">
-        
         {/* Compact Header */}
         <div className="flex-shrink-0 border-b border-gray-100 p-5 bg-white sticky top-0 z-20">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">Manage Availability</h2>
+              <h2 className="text-lg font-bold text-gray-900">
+                Manage Availability
+              </h2>
               <p className="text-xs text-gray-500">{court.name}</p>
             </div>
-            
+
             {/* Mode Switcher */}
             <div className="bg-gray-100 p-1 rounded-lg flex text-xs font-medium">
               <button
@@ -316,27 +319,49 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
                 Unblock
               </button>
             </div>
-            
+
             <button
               onClick={onClose}
               className="text-gray-400 hover:text-gray-600 p-1.5 hover:bg-gray-50 rounded-lg ml-2"
             >
-              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
               </svg>
             </button>
           </div>
 
           {/* Ultra Compact Info Strip */}
-          <div className={`px-3 py-2 rounded-md text-xs font-medium flex items-center gap-2 ${accentBgClass} ${accentTextClass}`}>
-             <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-             </svg>
-             <span>
-               {isBlockMode 
-                 ? "Select consecutive time slots below to restrict access." 
-                 : "Select previously blocked slots to restore availability."}
-             </span>
+          <div
+            className={`px-3 py-2 rounded-md text-xs font-medium flex items-center gap-2 ${accentBgClass} ${accentTextClass}`}
+          >
+            <svg
+              className="w-4 h-4 flex-shrink-0"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span>
+              {isBlockMode
+                ? "Select consecutive time slots below to restrict access."
+                : "Select previously blocked slots to restore availability."}
+            </span>
           </div>
         </div>
 
@@ -363,16 +388,17 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
           {selectedDate && (
             <div className="space-y-2">
               <div className="flex justify-between items-end mb-2">
-                 <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
-                    Time Slots
+                <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider">
+                  Time Slots
                 </label>
                 {selectedSlots.length > 0 && (
-                    <span className={`text-xs font-semibold ${accentTextClass}`}>
-                        {selectedSlots.length} slot{selectedSlots.length > 1 ? 's' : ''} selected
-                    </span>
+                  <span className={`text-xs font-semibold ${accentTextClass}`}>
+                    {selectedSlots.length} slot
+                    {selectedSlots.length > 1 ? "s" : ""} selected
+                  </span>
                 )}
               </div>
-              
+
               {fetchingSlots ? (
                 <div className="flex justify-center items-center py-10 bg-gray-50 rounded-lg border border-dashed border-gray-200">
                   <div className="w-5 h-5 border-2 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
@@ -384,33 +410,43 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
                   onMouseLeave={handleMouseUp}
                 >
                   {slots.map((slot) => {
-                    const isSelected = selectedSlots.find((s) => s.time === slot.time);
-                    
-                    let baseStyles = "py-2 text-xs font-medium rounded border transition-all text-center cursor-pointer ";
-                    
+                    const isSelected = selectedSlots.find(
+                      (s) => s.time === slot.time
+                    );
+
+                    let baseStyles =
+                      "py-2 text-xs font-medium rounded border transition-all text-center cursor-pointer ";
+
                     if (isBlockMode) {
-                        // BLOCK MODE STYLES (Amber/Orange Theme)
-                        if (isSelected) {
-                            baseStyles += "bg-amber-600 text-white border-amber-600 shadow-sm ";
-                        } else if (slot.booked) {
-                            baseStyles += "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed line-through decoration-gray-300 ";
-                        } else if (slot.blocked) {
-                            baseStyles += "bg-amber-50 text-amber-400 border-amber-100 cursor-not-allowed ";
-                        } else {
-                            // Available to block
-                            baseStyles += "bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:text-amber-700 ";
-                        }
+                      // BLOCK MODE STYLES (Amber/Orange Theme)
+                      if (isSelected) {
+                        baseStyles +=
+                          "bg-amber-600 text-white border-amber-600 shadow-sm ";
+                      } else if (slot.booked) {
+                        baseStyles +=
+                          "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed line-through decoration-gray-300 ";
+                      } else if (slot.blocked) {
+                        baseStyles +=
+                          "bg-amber-50 text-amber-400 border-amber-100 cursor-not-allowed ";
+                      } else {
+                        // Available to block
+                        baseStyles +=
+                          "bg-white text-gray-700 border-gray-200 hover:border-amber-400 hover:text-amber-700 ";
+                      }
                     } else {
-                        // UNBLOCK MODE STYLES (Green/Emerald Theme)
-                        if (isSelected) {
-                            baseStyles += "bg-emerald-600 text-white border-emerald-600 shadow-sm ";
-                        } else if (slot.blocked) {
-                            // Target for unblocking
-                            baseStyles += "bg-amber-50 text-amber-700 border-amber-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 ";
-                        } else {
-                            // Irrelevant slots
-                            baseStyles += "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50 ";
-                        }
+                      // UNBLOCK MODE STYLES (Green/Emerald Theme)
+                      if (isSelected) {
+                        baseStyles +=
+                          "bg-emerald-600 text-white border-emerald-600 shadow-sm ";
+                      } else if (slot.blocked) {
+                        // Target for unblocking
+                        baseStyles +=
+                          "bg-amber-50 text-amber-700 border-amber-200 hover:bg-emerald-50 hover:border-emerald-300 hover:text-emerald-700 ";
+                      } else {
+                        // Irrelevant slots
+                        baseStyles +=
+                          "bg-gray-50 text-gray-300 border-gray-100 cursor-not-allowed opacity-50 ";
+                      }
                     }
 
                     return (
@@ -449,7 +485,7 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
 
         {/* Footer Actions */}
         <div className="border-t border-gray-100 p-5 bg-gray-50 flex gap-3 rounded-b-xl">
-           <button
+          <button
             onClick={onClose}
             className="flex-1 px-4 py-2.5 bg-white border border-gray-300 text-gray-700 font-semibold rounded-lg hover:bg-gray-50 transition-colors text-sm"
           >
@@ -457,10 +493,18 @@ export default function BlockSlotsModal({ court, onClose, onSuccess }) {
           </button>
           <button
             onClick={isBlockMode ? handleBlockSlots : handleUnblockSlots}
-            disabled={loading || selectedSlots.length === 0 || (isBlockMode && !reason.trim())}
+            disabled={
+              loading ||
+              selectedSlots.length === 0 ||
+              (isBlockMode && !reason.trim())
+            }
             className={`flex-1 px-4 py-2.5 font-semibold rounded-lg transition-colors text-sm disabled:opacity-50 disabled:cursor-not-allowed shadow-sm ${activeThemeClass}`}
           >
-            {loading ? "Processing..." : isBlockMode ? "Confirm Block" : "Confirm Unblock"}
+            {loading
+              ? "Processing..."
+              : isBlockMode
+              ? "Confirm Block"
+              : "Confirm Unblock"}
           </button>
         </div>
       </div>
