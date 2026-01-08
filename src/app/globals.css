@@ -25,6 +25,11 @@ body {
   font-family: Arial, Helvetica, sans-serif;
 }
 
+/* Speed up all transitions globally */
+* {
+  transition-duration: 150ms !important;
+}
+
 /* Fix form input text visibility */
 input[type="text"],
 input[type="email"],

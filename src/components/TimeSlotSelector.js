@@ -50,6 +50,8 @@ export default function TimeSlotSelector({
   const channelRef = useRef(null);
   const fetchTimeoutRef = useRef(null);
   const isMountedRef = useRef(true);
+  const isDraggingRef = useRef(false);
+  const lastTouchedSlotRef = useRef(null);
 
   // Memoized fetch function to prevent stale closures
   const fetchBookings = useCallback(
@@ -165,6 +167,22 @@ export default function TimeSlotSelector({
       setupUnavailabilitySubscription();
     }
 
+    // Add global event listeners for drag end
+    const handleGlobalMouseUp = () => {
+      if (isDraggingRef.current) {
+        handleDragEnd();
+      }
+    };
+
+    const handleGlobalTouchEnd = () => {
+      if (isDraggingRef.current) {
+        handleDragEnd();
+      }
+    };
+
+    document.addEventListener("mouseup", handleGlobalMouseUp);
+    document.addEventListener("touchend", handleGlobalTouchEnd);
+
     // Cleanup function
     return () => {
       isMountedRef.current = false;
@@ -174,6 +192,8 @@ export default function TimeSlotSelector({
       if (fetchTimeoutRef.current) {
         clearTimeout(fetchTimeoutRef.current);
       }
+      document.removeEventListener("mouseup", handleGlobalMouseUp);
+      document.removeEventListener("touchend", handleGlobalTouchEnd);
     };
   }, [selectedDate, selectedSport, court.id, fetchBookings]);
 
@@ -287,6 +307,69 @@ export default function TimeSlotSelector({
         [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
       );
     }
+  };
+
+  // Handle mouse/touch drag start
+  const handleDragStart = (slot, e) => {
+    if (!slot.available) return;
+
+    isDraggingRef.current = true;
+    lastTouchedSlotRef.current = slot.time;
+
+    // Add the initial slot to selection
+    const index = selectedSlots.findIndex((s) => s.time === slot.time);
+    if (index === -1) {
+      setSelectedSlots(
+        [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
+      );
+    }
+  };
+
+  // Handle mouse/touch drag over slots
+  const handleDragOver = (slot, e) => {
+    if (!isDraggingRef.current || !slot.available) return;
+    if (lastTouchedSlotRef.current === slot.time) return;
+
+    lastTouchedSlotRef.current = slot.time;
+
+    // Add slot if not already selected
+    const index = selectedSlots.findIndex((s) => s.time === slot.time);
+    if (index === -1) {
+      setSelectedSlots(
+        [...selectedSlots, slot].sort((a, b) => a.time.localeCompare(b.time))
+      );
+    }
+  };
+
+  // Handle drag end
+  const handleDragEnd = () => {
+    isDraggingRef.current = false;
+    lastTouchedSlotRef.current = null;
+  };
+
+  // Touch event handlers
+  const handleTouchStart = (slot, e) => {
+    e.preventDefault();
+    handleDragStart(slot, e);
+  };
+
+  const handleTouchMove = (e) => {
+    if (!isDraggingRef.current) return;
+
+    const touch = e.touches[0];
+    const element = document.elementFromPoint(touch.clientX, touch.clientY);
+
+    if (element && element.dataset.slotTime) {
+      const slot = slots.find((s) => s.time === element.dataset.slotTime);
+      if (slot) {
+        handleDragOver(slot, e);
+      }
+    }
+  };
+
+  const handleTouchEnd = (e) => {
+    e.preventDefault();
+    handleDragEnd();
   };
 
   const handleDateChange = (days) => {
@@ -500,9 +583,16 @@ export default function TimeSlotSelector({
               {slots.map((slot) => (
                 <button
                   key={slot.time}
+                  data-slot-time={slot.time}
                   onClick={() => handleSlotClick(slot)}
+                  onMouseDown={(e) => handleDragStart(slot, e)}
+                  onMouseEnter={(e) => handleDragOver(slot, e)}
+                  onMouseUp={handleDragEnd}
+                  onTouchStart={(e) => handleTouchStart(slot, e)}
+                  onTouchMove={handleTouchMove}
+                  onTouchEnd={handleTouchEnd}
                   disabled={!slot.available}
-                  className={`p-3 text-sm font-bold rounded-lg transition-all ${
+                  className={`p-3 text-sm font-bold rounded-lg transition-all select-none ${
                     selectedSlots.find((s) => s.time === slot.time)
                       ? "bg-slate-800 text-white ring-2 ring-slate-800 ring-offset-2 shadow-md"
                       : slot.available
