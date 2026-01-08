@@ -59,7 +59,6 @@ export default function TrackBookingPage() {
       // Add filters based on what's provided
       if (referenceId.trim()) {
         query = query.eq("reference_id", referenceId.trim().toUpperCase());
-        );
       }
       if (phone.trim()) {
         query = query.eq("customer_phone", phone.trim());
