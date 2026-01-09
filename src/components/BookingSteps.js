@@ -18,7 +18,7 @@ export default function BookingSteps({
     availableSports[0]?.id || null
   );
 
-  // Initialize state with today's date in YYYY-MM-DD format (Local Time)
+  // Initialize state with today's date
   const [selectedDate, setSelectedDate] = useState(() => {
     const d = new Date();
     const year = d.getFullYear();
@@ -33,9 +33,18 @@ export default function BookingSteps({
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartSlot, setDragStartSlot] = useState(null);
 
+  // Customer Form Data
+  const [formData, setFormData] = useState({
+    name: "",
+    phone: "",
+    email: "",
+  });
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState("");
+
   // State for Admin Views
-  const [viewSlot, setViewSlot] = useState(null); // The slot data
-  const [showFullDetails, setShowFullDetails] = useState(false); // Toggle for large popup
+  const [viewSlot, setViewSlot] = useState(null);
+  const [showFullDetails, setShowFullDetails] = useState(false);
   const [copySuccess, setCopySuccess] = useState(false);
 
   const gridRef = useRef(null);
@@ -158,7 +167,6 @@ export default function BookingSteps({
               slot.time < unavailable.end_time
           );
 
-          // Flatten data for easier access in the UI
           let formattedBooking = null;
           if (bookingMatch) {
             formattedBooking = {
@@ -186,19 +194,16 @@ export default function BookingSteps({
   const handleSlotClick = (slot, e) => {
     if (isAdmin) {
       if (slot.booked) {
-        // DIRECTLY OPEN FULL DETAILS FOR BOOKED SLOTS
         setViewSlot(slot);
         setCopySuccess(false);
         setShowFullDetails(true);
       } else if (slot.unavailable) {
-        // OPEN SMALL MODAL FOR UNAVAILABLE/MAINTENANCE SLOTS
         setViewSlot(slot);
         setShowFullDetails(false);
       }
       return;
     }
 
-    // Customer logic
     if (slot.booked) return;
     const slotIndex = slots.findIndex((s) => s.time === slot.time);
     const isSelected = selectedSlots.some((s) => s.time === slot.time);
@@ -317,6 +322,7 @@ export default function BookingSteps({
     }
   };
 
+  // Helper Functions
   const getStatusColor = (status) => {
     switch (status) {
       case "confirmed":
@@ -335,7 +341,6 @@ export default function BookingSteps({
   const today = new Date().toISOString().split("T")[0];
   const showTimeSlots = selectedDate;
 
-  // Helper variables for summary
   const getSportName = () =>
     availableSports.find((s) => s.id === selectedSport)?.name || "Sport";
   const getFormattedDate = () =>
@@ -352,31 +357,123 @@ export default function BookingSteps({
     }`;
   };
 
+  // --- SUBMISSION LOGIC ---
+  const generateReferenceId = () => {
+    return "BK" + Math.random().toString(36).substr(2, 8).toUpperCase();
+  };
+
+  const handleConfirmBooking = async (e) => {
+    e.preventDefault();
+    setSubmitError("");
+    setIsSubmitting(true);
+
+    if (!formData.name.trim() || !formData.phone.trim()) {
+      setSubmitError("Name and Phone are required.");
+      setIsSubmitting(false);
+      return;
+    }
+
+    try {
+      const supabase = createClient();
+
+      // Calculate End Time
+      const sortedSlots = [...selectedSlots].sort((a, b) =>
+        a.time.localeCompare(b.time)
+      );
+      const startTime = sortedSlots[0].time;
+
+      // Calculate strict end time from last slot
+      const lastSlot = sortedSlots[sortedSlots.length - 1];
+      const [h, m] = lastSlot.time.split(":").map(Number);
+      const endMins = h * 60 + m + court.slot_duration_minutes;
+      const endH = Math.floor(endMins / 60);
+      const endMin = endMins % 60;
+      const endTime = `${String(endH).padStart(2, "0")}:${String(
+        endMin
+      ).padStart(2, "0")}:00`;
+
+      const referenceId = generateReferenceId();
+
+      const { data, error } = await supabase
+        .from("bookings")
+        .insert([
+          {
+            court_id: court.id,
+            institution_id: institutionId,
+            sport_id: selectedSport,
+            booking_date: selectedDate,
+            start_time: startTime,
+            end_time: endTime,
+            customer_name: formData.name,
+            customer_phone: formData.phone,
+            customer_email: formData.email || null,
+            total_price: getTotalPrice(),
+            status: "confirmed", // Assuming direct confirmation for now
+            reference_id: referenceId,
+          },
+        ])
+        .select();
+
+      if (error) throw error;
+
+      // Success: Redirect to confirmation/receipt page
+      router.push(`/booking/confirmation/${referenceId}`);
+    } catch (err) {
+      console.error("Booking Error:", err);
+      setSubmitError("Failed to book slot. Please try again.");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
-      {/* Steps (Hidden for Admin) */}
+      {/* Steps Indicator */}
       {!isAdmin && (
         <div className="mb-8">
           <div className="flex items-center justify-center gap-4 mb-3">
             <div className="flex flex-col items-center">
-              <div className="w-10 h-10 rounded-full bg-slate-800 text-white flex items-center justify-center font-bold">
-                1
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                  currentStep === 1
+                    ? "bg-slate-800 text-white"
+                    : "bg-green-600 text-white"
+                }`}
+              >
+                {currentStep === 1 ? "1" : "✓"}
               </div>
               <span className="text-sm font-bold text-slate-800">
                 Select Time
               </span>
             </div>
-            <div className="w-20 h-0.5 bg-gray-200"></div>
-            <div className="flex flex-col items-center opacity-50">
-              <div className="w-10 h-10 rounded-full bg-gray-200 text-gray-500 flex items-center justify-center font-bold">
+            <div
+              className={`w-20 h-0.5 ${
+                currentStep === 2 ? "bg-slate-800" : "bg-gray-200"
+              }`}
+            ></div>
+            <div className="flex flex-col items-center">
+              <div
+                className={`w-10 h-10 rounded-full flex items-center justify-center font-bold ${
+                  currentStep === 2
+                    ? "bg-slate-800 text-white"
+                    : "bg-gray-200 text-gray-500"
+                }`}
+              >
                 2
               </div>
-              <span className="text-sm font-bold text-gray-500">Details</span>
+              <span
+                className={`text-sm font-bold ${
+                  currentStep === 2 ? "text-slate-800" : "text-gray-500"
+                }`}
+              >
+                Details
+              </span>
             </div>
           </div>
         </div>
       )}
 
+      {/* STEP 1: SLOT SELECTION */}
       {currentStep === 1 && (
         <div className="space-y-5">
           {!isAdmin && (
@@ -386,7 +483,7 @@ export default function BookingSteps({
           )}
 
           <div className="flex flex-col md:flex-row gap-4 justify-between">
-            {/* Sport Display (Non-selectable badges) */}
+            {/* Sport Display */}
             <div className="flex-1">
               <label className="block text-xs font-bold text-gray-500 uppercase mb-2">
                 Available Sports
@@ -397,7 +494,6 @@ export default function BookingSteps({
                     key={sport.id}
                     className="flex items-center gap-2 text-xs font-medium text-slate-600 select-none"
                   >
-                    {/* The Bullet Dot */}
                     <span className="w-1.5 h-1.5 rounded-full bg-slate-400"></span>
                     {sport.name}
                   </div>
@@ -439,7 +535,7 @@ export default function BookingSteps({
             </div>
           </div>
 
-          {/* Time Slots */}
+          {/* Time Slots Grid */}
           {!showTimeSlots ? (
             <div className="text-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-300">
               <p className="text-gray-500">Select a date to view schedule</p>
@@ -482,7 +578,9 @@ export default function BookingSteps({
                           onMouseDown={(e) => handleMouseDown(slot, e)}
                           onMouseEnter={() => handleMouseEnter(slot)}
                           onTouchStart={(e) => handleTouchStart(slot, e)}
-                          disabled={!isAdmin && (slot.booked || slot.unavailable)}
+                          disabled={
+                            !isAdmin && (slot.booked || slot.unavailable)
+                          }
                           className={`p-2 text-xs font-bold rounded-md transition-all select-none relative
                             ${
                               isSelected
@@ -507,8 +605,15 @@ export default function BookingSteps({
                             <span className="text-[9px] opacity-70">
                               to {slot.displayEndTime}
                             </span>
+                            {/* Show reference ID for booked slots in admin view */}
+                            {isAdmin &&
+                              slot.booked &&
+                              slot.bookingDetails?.reference_id && (
+                                <span className="text-[8px] text-blue-900 font-mono mt-0.5 opacity-80 truncate max-w-[60px]">
+                                  {slot.bookingDetails.reference_id}
+                                </span>
+                              )}
                           </div>
-                          {/* Icons */}
                           {slot.unavailable && (
                             <span className="absolute top-0.5 right-0.5 w-2 h-2 bg-orange-400 rounded-full"></span>
                           )}
@@ -520,18 +625,19 @@ export default function BookingSteps({
                     })}
                   </div>
 
+                  {/* Legend */}
                   <div className="flex flex-wrap gap-4 text-xs border-t border-gray-100 pt-3">
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-green-100 border border-green-300 rounded mr-1.5"></div>
-                      <span class="text-gray-400">Free</span>
+                      <span className="text-gray-400">Free</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-red-100 border border-red-300 rounded mr-1.5"></div>
-                      <span class="text-gray-400">Booked</span>
+                      <span className="text-gray-400">Booked</span>
                     </div>
                     <div className="flex items-center">
                       <div className="w-3 h-3 bg-orange-100 border border-orange-300 rounded mr-1.5"></div>
-                      <span class="text-gray-400">Unavailable</span>
+                      <span className="text-gray-400">Unavailable</span>
                     </div>
                     {!isAdmin && (
                       <div className="flex items-center">
@@ -545,41 +651,49 @@ export default function BookingSteps({
             </div>
           )}
 
-          {/* BOOKING SUMMARY SECTION */}
+          {/* STEP 1 SUMMARY */}
           {!isAdmin && selectedSlots.length > 0 && (
             <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
               <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">
                 Booking Summary
               </h3>
-              
+
               <div className="space-y-3 mb-5 text-sm text-slate-600">
                 <div className="flex justify-between items-start">
-                    <span>Date:</span>
-                    <span className="font-bold text-slate-900 text-right">{getFormattedDate()}</span>
+                  <span>Date:</span>
+                  <span className="font-bold text-slate-900 text-right">
+                    {getFormattedDate()}
+                  </span>
                 </div>
                 <div className="flex justify-between items-start">
-                    <span>Court:</span>
-                    <span className="font-bold text-slate-900 text-right">{court.name}</span>
+                  <span>Court:</span>
+                  <span className="font-bold text-slate-900 text-right">
+                    {court.name}
+                  </span>
                 </div>
                 <div className="flex justify-between items-start">
-                    <span>Sport:</span>
-                    <span className="font-bold text-slate-900 text-right">{getSportName()}</span>
+                  <span>Sport:</span>
+                  <span className="font-bold text-slate-900 text-right">
+                    {getSportName()}
+                  </span>
                 </div>
                 <div className="flex justify-between items-start">
-                    <span>Time:</span>
-                    <span className="font-bold text-slate-900 text-right">{getTimeRange()}</span>
+                  <span>Time:</span>
+                  <span className="font-bold text-slate-900 text-right">
+                    {getTimeRange()}
+                  </span>
                 </div>
               </div>
 
               <div className="bg-white border border-slate-200 rounded-lg p-3 flex justify-between items-center mb-4 shadow-sm">
                 <span className="font-bold text-slate-700">Total Price</span>
                 <div className="text-right">
-                    <span className="block text-xl font-bold text-slate-900">
-                        LKR {getTotalPrice().toFixed(2)}
-                    </span>
-                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">
-                        (Pay at Venue)
-                    </span>
+                  <span className="block text-xl font-bold text-slate-900">
+                    LKR {getTotalPrice().toFixed(2)}
+                  </span>
+                  <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">
+                    (Pay at Venue)
+                  </span>
                 </div>
               </div>
 
@@ -594,14 +708,105 @@ export default function BookingSteps({
         </div>
       )}
 
+      {/* STEP 2: CUSTOMER FORM */}
       {!isAdmin && currentStep === 2 && (
-        <div>
-          <button onClick={() => setCurrentStep(1)}>Back</button>
-          <form>{/* Existing Form Logic */}</form>
+        <div className="animate-in slide-in-from-right duration-300">
+          <button
+            onClick={() => setCurrentStep(1)}
+            className="text-sm font-semibold text-slate-500 hover:text-slate-800 flex items-center mb-6 transition-colors"
+          >
+            <span className="mr-1">←</span> Back to Selection
+          </button>
+
+          <h2 className="text-xl font-bold text-slate-900 mb-6">
+            Enter Your Details
+          </h2>
+
+          <form onSubmit={handleConfirmBooking} className="space-y-5">
+            {/* Name */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Full Name <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={formData.name}
+                onChange={(e) =>
+                  setFormData({ ...formData, name: e.target.value })
+                }
+                placeholder="John Doe"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+              />
+            </div>
+
+            {/* Phone */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Contact Number <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="tel"
+                required
+                value={formData.phone}
+                onChange={(e) =>
+                  setFormData({ ...formData, phone: e.target.value })
+                }
+                placeholder="0771234567"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+              />
+            </div>
+
+            {/* Email */}
+            <div>
+              <label className="block text-sm font-semibold text-slate-700 mb-2">
+                Email Address{" "}
+                <span className="text-slate-400 font-normal text-xs">
+                  (Optional)
+                </span>
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) =>
+                  setFormData({ ...formData, email: e.target.value })
+                }
+                placeholder="john@example.com"
+                className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-800 focus:border-slate-800 outline-none transition-all"
+              />
+            </div>
+
+            {/* Error Message */}
+            {submitError && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+                {submitError}
+              </div>
+            )}
+
+            {/* Confirm Button */}
+            <div className="pt-4 border-t border-slate-100">
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-slate-600 font-medium">
+                  Total Payable
+                </span>
+                <span className="text-xl font-bold text-slate-900">
+                  LKR {getTotalPrice().toFixed(2)}
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white py-4 rounded-xl font-bold text-lg shadow-lg hover:shadow-xl transition-all disabled:opacity-70 disabled:cursor-not-allowed"
+              >
+                {isSubmitting ? "Confirming..." : "Confirm Booking"}
+              </button>
+            </div>
+          </form>
         </div>
       )}
 
-      {/* 1. SMALL MODAL (Only for Unavailable/Maintenance slots) */}
+      {/* ADMIN VIEW SLOT MODAL (Maintenance/Unavailable) */}
       {isAdmin && viewSlot && !showFullDetails && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-sm animate-in zoom-in-95 duration-200">
@@ -651,11 +856,10 @@ export default function BookingSteps({
         </div>
       )}
 
-      {/* 2. LARGE BOOKING DETAILS POPUP (For Confirmed Bookings) */}
+      {/* ADMIN FULL DETAILS MODAL (Confirmed Bookings) */}
       {isAdmin && showFullDetails && viewSlot?.bookingDetails && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-100/90 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 my-8 animate-in zoom-in-95 duration-200">
-            {/* Close Button Top Right */}
             <button
               onClick={() => {
                 setShowFullDetails(false);
@@ -680,7 +884,6 @@ export default function BookingSteps({
             </button>
 
             <div className="p-8">
-              {/* Header */}
               <div className="flex items-center justify-between mb-8">
                 <div>
                   <h2 className="text-2xl font-bold text-slate-900">
@@ -700,7 +903,6 @@ export default function BookingSteps({
                 </span>
               </div>
 
-              {/* Reference ID Banner */}
               <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mb-6 flex justify-between items-center">
                 <div>
                   <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">
@@ -744,9 +946,7 @@ export default function BookingSteps({
                 </button>
               </div>
 
-              {/* Grid Info */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Venue Info */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
@@ -792,7 +992,6 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                {/* Schedule */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
@@ -838,7 +1037,6 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                {/* Customer Info */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
@@ -886,7 +1084,6 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                {/* Price */}
                 <div className="bg-slate-800 rounded-xl p-5 text-white shadow-lg flex flex-col justify-center">
                   <span className="font-bold text-sm text-slate-300 uppercase mb-1">
                     Total Amount
