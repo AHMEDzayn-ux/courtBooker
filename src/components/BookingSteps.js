@@ -420,7 +420,7 @@ export default function BookingSteps({
         // Check for the specific Postgres Race Condition Code
         if (error.code === "23P01") {
           setSubmitError(
-            "Slots already booked! Someone just beat you to it. Please refresh the page."
+            "This slot has just been booked by another user.Please refresh the page to see the latest availability."
           );
           // Optional: You could auto-refresh slots here by calling fetchBookings()
         } else {
@@ -878,50 +878,54 @@ export default function BookingSteps({
       {isAdmin && showFullDetails && viewSlot?.bookingDetails && (
         <div className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-100/90 backdrop-blur-sm p-4 overflow-y-auto">
           <div className="relative w-full max-w-2xl bg-white rounded-xl shadow-2xl border border-slate-200 my-8 animate-in zoom-in-95 duration-200">
-            <button
-              onClick={() => {
-                setShowFullDetails(false);
-                setViewSlot(null);
-              }}
-              className="absolute top-4 right-4 p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition-colors z-10"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            {/* Sticky close button for mobile */}
+            <div className="sticky top-0 z-20 flex justify-end pt-2 pr-2 sm:pr-6 bg-transparent">
+              <button
+                onClick={() => {
+                  setShowFullDetails(false);
+                  setViewSlot(null);
+                }}
+                className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-600 transition-colors"
+                aria-label="Close details"
               >
-                <line x1="18" y1="6" x2="6" y2="18"></line>
-                <line x1="6" y1="6" x2="18" y2="18"></line>
-              </svg>
-            </button>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="24"
+                  height="24"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <line x1="18" y1="6" x2="6" y2="18"></line>
+                  <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+              </button>
+            </div>
 
-            <div className="p-8">
-              <div className="flex items-center justify-between mb-8">
-                <div>
+            <div className="p-4 sm:p-8">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 sm:mb-8 gap-2">
+                <div className="flex items-center gap-2">
                   <h2 className="text-2xl font-bold text-slate-900">
                     Booking Details
                   </h2>
-                  <p className="text-slate-500 text-sm mt-1">
-                    Full information record
-                  </p>
+                  <span
+                    className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${getStatusColor(
+                      viewSlot.bookingDetails.status
+                    )}`}
+                  >
+                    {viewSlot.bookingDetails.status.charAt(0).toUpperCase() +
+                      viewSlot.bookingDetails.status.slice(1)}
+                  </span>
                 </div>
-                <span
-                  className={`px-4 py-2 rounded-full text-sm font-bold shadow-sm ${getStatusColor(
-                    viewSlot.bookingDetails.status
-                  )}`}
-                >
-                  {viewSlot.bookingDetails.status.charAt(0).toUpperCase() +
-                    viewSlot.bookingDetails.status.slice(1)}
-                </span>
+                <p className="text-slate-500 text-sm mt-1">
+                  Full information record
+                </p>
               </div>
 
-              <div className="bg-slate-50 rounded-lg p-4 border border-slate-200 mb-6 flex justify-between items-center">
+              <div className="bg-slate-50 rounded-lg p-2 sm:p-4 border border-slate-200 mb-4 sm:mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                 <div>
                   <p className="text-xs text-slate-500 mb-1 font-semibold uppercase">
                     Reference ID
@@ -964,8 +968,8 @@ export default function BookingSteps({
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-6">
+                <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
                       className="w-5 h-5 mr-2 text-slate-700"
@@ -1010,7 +1014,7 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
                       className="w-5 h-5 mr-2 text-slate-700"
@@ -1055,7 +1059,7 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-xl p-5 hover:shadow-md transition-shadow">
+                <div className="bg-white border border-slate-200 rounded-xl p-3 sm:p-5 hover:shadow-md transition-shadow">
                   <h3 className="font-bold text-slate-900 mb-4 flex items-center">
                     <svg
                       className="w-5 h-5 mr-2 text-slate-700"
@@ -1102,7 +1106,7 @@ export default function BookingSteps({
                   </div>
                 </div>
 
-                <div className="bg-slate-800 rounded-xl p-5 text-white shadow-lg flex flex-col justify-center">
+                <div className="bg-slate-800 rounded-xl p-3 sm:p-5 text-white shadow-lg flex flex-col justify-center">
                   <span className="font-bold text-sm text-slate-300 uppercase mb-1">
                     Total Amount
                   </span>
