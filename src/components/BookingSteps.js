@@ -63,12 +63,25 @@ export default function BookingSteps({
         "0"
       )}:00`;
 
+      // Calculate end time for this slot
+      const endSlotTime = currentTime + court.slot_duration_minutes;
+      const endHour = Math.floor(endSlotTime / 60);
+      const endMin = endSlotTime % 60;
+      const endTimeStr = `${String(endHour).padStart(2, "0")}:${String(
+        endMin
+      ).padStart(2, "0")}`;
+
       slots.push({
         time: timeStr,
         displayTime: `${String(hour).padStart(2, "0")}:${String(min).padStart(
           2,
           "0"
         )}`,
+        displayEndTime: endTimeStr,
+        displayRange: `${String(hour).padStart(2, "0")}:${String(min).padStart(
+          2,
+          "0"
+        )} - ${endTimeStr}`,
         available: true,
         booked: false,
         unavailable: false,
@@ -545,7 +558,8 @@ export default function BookingSteps({
               <label className="block text-sm font-semibold text-slate-800 mb-2">
                 Select Time Slots <span className="text-red-500">*</span>{" "}
                 <span className="text-xs text-gray-500 font-normal">
-                  (Click or drag consecutive slots)
+                  (Each slot is {court.slot_duration_minutes} minutes. Click or
+                  drag consecutive slots)
                 </span>
               </label>
               {loading ? (
@@ -585,7 +599,7 @@ export default function BookingSteps({
                                 }`
                               : slot.booked
                               ? "Already booked"
-                              : "Available"
+                              : `Available: ${slot.displayRange}`
                           }
                           style={
                             isSelected
@@ -602,7 +616,11 @@ export default function BookingSteps({
                               : "bg-green-50 text-green-700 hover:bg-green-100 border border-green-300 hover:shadow-sm"
                           }`}
                         >
-                          {slot.displayTime}
+                          <div className="flex flex-col items-center leading-tight">
+                            <span>{slot.displayTime}</span>
+                            <span className="text-[10px] opacity-70">to</span>
+                            <span>{slot.displayEndTime}</span>
+                          </div>
                           {slot.unavailable && (
                             <svg
                               className="w-3 h-3 absolute top-0.5 right-0.5"
