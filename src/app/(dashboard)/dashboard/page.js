@@ -3,7 +3,113 @@
 import { useEffect, useState, useCallback } from "react";
 import { createClient } from "@/lib/supabase/client";
 import Link from "next/link";
+import BookingSteps from "@/components/BookingSteps";
 
+// --- ADMIN BOOKING SLOTS COMPONENT ---
+function AdminBookingSlots({ institutionId }) {
+  const [courts, setCourts] = useState([]);
+  const [sports, setSports] = useState([]);
+  const [selectedCourtId, setSelectedCourtId] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!institutionId) return;
+
+    async function fetchData() {
+      setLoading(true);
+      const supabase = createClient();
+
+      // Fetch courts
+      const { data: courtsData } = await supabase
+        .from("courts")
+        .select(`
+          *,
+          court_sports (
+            sport_id,
+            sports (id, name)
+          )
+        `)
+        .eq("institution_id", institutionId)
+        .order("name");
+
+      setCourts(courtsData || []);
+      
+      // Select the first court automatically
+      if (courtsData && courtsData.length > 0) {
+        setSelectedCourtId(courtsData[0].id);
+      }
+
+      // Fetch all sports for the institution (for fallback)
+      const { data: sportsData } = await supabase
+        .from("sports")
+        .select("*")
+        .eq("institution_id", institutionId);
+      
+      setSports(sportsData || []);
+      setLoading(false);
+    }
+    fetchData();
+  }, [institutionId]);
+
+  if (loading)
+    return (
+      <div className="py-12 text-center text-sm text-gray-500 flex flex-col items-center">
+         <div className="w-6 h-6 border-2 border-gray-300 border-t-slate-800 rounded-full animate-spin mb-2"></div>
+         Loading court schedules...
+      </div>
+    );
+
+  if (!courts.length)
+    return (
+      <div className="py-12 text-center bg-gray-50 rounded-lg border border-dashed border-gray-300">
+        <p className="text-gray-500 text-sm">No courts found.</p>
+        <Link href="/dashboard/courts" className="text-blue-600 font-semibold text-sm mt-1 inline-block">
+            + Add your first court
+        </Link>
+      </div>
+    );
+
+  const selectedCourt = courts.find((c) => c.id === selectedCourtId);
+
+  // Filter sports specific to the selected court, or fallback to all sports
+  const currentCourtSports = selectedCourt?.court_sports?.map(cs => cs.sports) || sports;
+
+  return (
+    <div>
+      {/* Court Selector Tabs */}
+      <div className="flex flex-wrap gap-2 mb-6 border-b border-gray-100 pb-4">
+        {courts.map((court) => (
+          <button
+            key={court.id}
+            onClick={() => setSelectedCourtId(court.id)}
+            className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+              selectedCourtId === court.id
+                ? "bg-slate-800 text-white shadow-md"
+                : "bg-white text-gray-600 hover:bg-gray-50 border border-gray-200"
+            }`}
+          >
+            {court.name}
+          </button>
+        ))}
+      </div>
+
+      {/* The Booking Component in Admin Mode */}
+      {selectedCourt && (
+        <div className="animate-in fade-in duration-300">
+          <BookingSteps
+            key={selectedCourt.id} // Key ensures component resets when changing courts
+            court={selectedCourt}
+            institutionId={institutionId}
+            availableSports={currentCourtSports}
+            isAdmin={true} // <--- ENABLES ADMIN VIEW/DETAILS
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- MAIN DASHBOARD PAGE ---
 export default function DashboardPage() {
   const [stats, setStats] = useState({
     totalCourts: 0,
@@ -11,15 +117,19 @@ export default function DashboardPage() {
     todayBookings: 0,
     revenue: 0,
   });
+  
+  const [institutionId, setInstitutionId] = useState(null);
   const [recentBookings, setRecentBookings] = useState([]);
   const [loading, setLoading] = useState(true);
 
   const fetchDashboardData = useCallback(async () => {
     const supabase = createClient();
-    const {
-      data: { user },
-    } = await supabase.auth.getUser();
 
+    // 1. Get User
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    // 2. Get Institution ID
     const { data: adminData } = await supabase
       .from("institution_admins")
       .select("institution_id")
@@ -28,62 +138,44 @@ export default function DashboardPage() {
 
     if (!adminData) return;
 
-    const institutionId = adminData.institution_id;
+    const instId = adminData.institution_id;
+    setInstitutionId(instId);
 
-    // Get courts count
-    const { count: courtsCount } = await supabase
-      .from("courts")
-      .select("*", { count: "exact", head: true })
-      .eq("institution_id", institutionId);
-
-    // Get total bookings
-    const { count: bookingsCount } = await supabase
-      .from("bookings")
-      .select("*", { count: "exact", head: true })
-      .eq("institution_id", institutionId);
-
-    // Get today's bookings
+    // 3. Parallel Fetching for Dashboard Stats
     const today = new Date().toISOString().split("T")[0];
-    const { count: todayCount } = await supabase
-      .from("bookings")
-      .select("*", { count: "exact", head: true })
-      .eq("institution_id", institutionId)
-      .eq("booking_date", today);
 
-    // Get total revenue
-    const { data: revenueData } = await supabase
-      .from("bookings")
-      .select("total_price")
-      .eq("institution_id", institutionId)
-      .eq("status", "confirmed");
+    const [
+      courtsResult,
+      bookingsResult,
+      todayResult,
+      revenueResult,
+      recentResult
+    ] = await Promise.all([
+      supabase.from("courts").select("*", { count: "exact", head: true }).eq("institution_id", instId),
+      supabase.from("bookings").select("*", { count: "exact", head: true }).eq("institution_id", instId),
+      supabase.from("bookings").select("*", { count: "exact", head: true }).eq("institution_id", instId).eq("booking_date", today),
+      supabase.from("bookings").select("total_price").eq("institution_id", instId).eq("status", "confirmed"),
+      supabase
+        .from("bookings")
+        .select(`*, courts(name), sports(name)`)
+        .eq("institution_id", instId)
+        .order("created_at", { ascending: false })
+        .limit(8)
+    ]);
 
-    const totalRevenue =
-      revenueData?.reduce(
-        (sum, b) => sum + parseFloat(b.total_price || 0),
-        0
-      ) || 0;
-
-    // Get recent bookings (Limit 8 to fill space nicely)
-    const { data: bookings } = await supabase
-      .from("bookings")
-      .select(
-        `
-        *,
-        courts(name),
-        sports(name)
-      `
-      )
-      .eq("institution_id", institutionId)
-      .order("created_at", { ascending: false })
-      .limit(8);
+    const totalRevenue = revenueResult.data?.reduce(
+      (sum, b) => sum + parseFloat(b.total_price || 0),
+      0
+    ) || 0;
 
     setStats({
-      totalCourts: courtsCount || 0,
-      totalBookings: bookingsCount || 0,
-      todayBookings: todayCount || 0,
+      totalCourts: courtsResult.count || 0,
+      totalBookings: bookingsResult.count || 0,
+      todayBookings: todayResult.count || 0,
       revenue: totalRevenue,
     });
-    setRecentBookings(bookings || []);
+
+    setRecentBookings(recentResult.data || []);
     setLoading(false);
   }, []);
 
@@ -94,7 +186,7 @@ export default function DashboardPage() {
   if (loading) {
     return (
       <div className="flex justify-center items-center min-h-screen bg-gray-50">
-        <div className="w-8 h-8 border-4 border-gray-900 border-t-transparent rounded-full animate-spin"></div>
+        <div className="w-8 h-8 border-4 border-slate-800 border-t-transparent rounded-full animate-spin"></div>
       </div>
     );
   }
@@ -102,219 +194,145 @@ export default function DashboardPage() {
   return (
     <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header - Compact */}
-        <div className="flex justify-between items-center mb-5">
-          <h1 className="text-xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-xs font-mono text-gray-400 bg-white px-3 py-1 rounded-full border border-gray-100 shadow-sm">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
+          <p className="text-xs font-mono text-gray-500 bg-white px-3 py-1.5 rounded-full border border-gray-200 shadow-sm">
             {new Date().toLocaleDateString("en-US", {
-              weekday: "short",
+              weekday: "long",
               month: "short",
               day: "numeric",
+              year: "numeric"
             })}
           </p>
         </div>
 
-        {/* Ultra-Slim Stats Bar */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6">
-          <div className="grid grid-cols-2 lg:grid-cols-4 divide-y lg:divide-y-0 lg:divide-x divide-gray-100">
-            {/* Revenue */}
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Revenue
-                </p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">
-                  <span className="text-[10px] text-gray-400 font-normal mr-1">
-                    LKR
-                  </span>
-                  {stats.revenue.toLocaleString("en-US", {
-                    maximumFractionDigits: 0,
-                  })}
-                </p>
-              </div>
-              <div className="text-purple-500 bg-purple-50 p-2 rounded-lg">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
-                  />
-                </svg>
-              </div>
+        {/* Stats Grid */}
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Revenue</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">
+                <span className="text-xs text-gray-400 font-normal mr-1">LKR</span>
+                {stats.revenue.toLocaleString()}
+              </p>
             </div>
-
-            {/* Today */}
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Today
-                </p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">
-                  {stats.todayBookings}{" "}
-                  <span className="text-xs font-normal text-gray-400">
-                    Bookings
-                  </span>
-                </p>
-              </div>
-              <div className="text-amber-500 bg-amber-50 p-2 rounded-lg">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-                  />
-                </svg>
-              </div>
+            <div className="text-purple-600 bg-purple-50 p-3 rounded-lg">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
             </div>
+          </div>
 
-            {/* All Bookings */}
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Total Bookings
-                </p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">
-                  {stats.totalBookings}
-                </p>
-              </div>
-              <div className="text-emerald-500 bg-emerald-50 p-2 rounded-lg">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                  />
-                </svg>
-              </div>
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Today</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.todayBookings}</p>
             </div>
+            <div className="text-amber-600 bg-amber-50 p-3 rounded-lg">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+            </div>
+          </div>
 
-            {/* Courts */}
-            <div className="p-4 flex items-center justify-between">
-              <div>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">
-                  Active Courts
-                </p>
-                <p className="text-lg font-bold text-gray-900 mt-0.5">
-                  {stats.totalCourts}
-                </p>
-              </div>
-              <div className="text-blue-500 bg-blue-50 p-2 rounded-lg">
-                <svg
-                  className="w-5 h-5"
-                  fill="none"
-                  viewBox="0 0 24 24"
-                  stroke="currentColor"
-                >
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-                  />
-                </svg>
-              </div>
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Total Bookings</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalBookings}</p>
+            </div>
+            <div className="text-emerald-600 bg-emerald-50 p-3 rounded-lg">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+            </div>
+          </div>
+
+          <div className="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between">
+            <div>
+              <p className="text-xs font-bold text-gray-400 uppercase tracking-wider">Active Courts</p>
+              <p className="text-2xl font-bold text-gray-900 mt-1">{stats.totalCourts}</p>
+            </div>
+            <div className="text-blue-600 bg-blue-50 p-3 rounded-lg">
+              <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
+              </svg>
             </div>
           </div>
         </div>
 
-        {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-          {/* Recent Activity Table */}
+        {/* --- BOOKING SLOTS VIEW (ADMIN) --- */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
+          <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+            <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wide">
+              View Live Court Schedule
+            </h2>
+            <Link href="/dashboard/courts" className="text-xs font-semibold text-slate-600 hover:text-slate-800 flex items-center">
+              Manage Settings &rarr;
+            </Link>
+          </div>
+          <div className="p-6">
+             {/* We pass the institutionId only if it is loaded */}
+             {institutionId && <AdminBookingSlots institutionId={institutionId} />}
+          </div>
+        </div>
+
+        {/* Recent Bookings & Quick Actions Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+          
+          {/* Recent Bookings Table */}
           <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-5 py-3 border-b border-gray-200 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-xs font-bold text-gray-500 uppercase tracking-wide">
-                Recent Activity
+            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
+              <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wide">
+                Recent Bookings
               </h2>
-              <Link
-                href="/dashboard/bookings"
-                className="text-xs font-semibold text-blue-600 hover:text-blue-700"
-              >
+              <Link href="/dashboard/bookings" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
                 View All &rarr;
               </Link>
             </div>
-
             <div className="overflow-x-auto">
               <table className="min-w-full text-left text-sm whitespace-nowrap">
                 <thead className="bg-white text-gray-400 border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wider">
                   <tr>
-                    <th className="px-5 py-3 font-medium">Ref</th>
-                    <th className="px-5 py-3 font-medium">Court</th>
-                    <th className="px-5 py-3 font-medium hidden sm:table-cell">
-                      Date
-                    </th>
-                    <th className="px-5 py-3 font-medium text-center">
-                      Status
-                    </th>
-                    <th className="px-5 py-3 font-medium text-right">Amount</th>
+                    <th className="px-6 py-3 font-medium">Ref ID</th>
+                    <th className="px-6 py-3 font-medium">Details</th>
+                    <th className="px-6 py-3 font-medium text-center">Status</th>
+                    <th className="px-6 py-3 font-medium text-right">Amount</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {recentBookings.length === 0 ? (
                     <tr>
-                      <td
-                        colSpan="5"
-                        className="px-6 py-12 text-center text-gray-400 text-xs"
-                      >
-                        No activity recorded yet.
+                      <td colSpan="4" className="px-6 py-12 text-center text-gray-400 text-xs">
+                        No bookings found.
                       </td>
                     </tr>
                   ) : (
                     recentBookings.map((booking) => (
-                      <tr
-                        key={booking.id}
-                        className="hover:bg-gray-50/80 transition-colors group"
-                      >
-                        <td className="px-5 py-3 font-mono text-xs text-blue-600 font-medium group-hover:text-blue-700">
+                      <tr key={booking.id} className="hover:bg-gray-50/80 transition-colors group">
+                        <td className="px-6 py-4 font-mono text-xs text-blue-600 font-medium">
                           {booking.reference_id}
+                          <div className="text-[10px] text-gray-400 font-sans mt-0.5">
+                            {new Date(booking.created_at).toLocaleDateString()}
+                          </div>
                         </td>
-                        <td className="px-5 py-3 text-gray-900 text-xs font-medium">
-                          {booking.courts.name}
-                          <span className="text-[10px] text-gray-400 block">
-                            {booking.sports?.name}
-                          </span>
+                        <td className="px-6 py-4">
+                          <div className="text-gray-900 font-medium text-xs">{booking.courts?.name}</div>
+                          <div className="text-[10px] text-gray-500">
+                             {booking.sports?.name} • {new Date(booking.booking_date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
+                          </div>
                         </td>
-                        <td className="px-5 py-3 text-gray-500 text-xs hidden sm:table-cell">
-                          {new Date(booking.booking_date).toLocaleDateString(
-                            "en-US",
-                            { month: "short", day: "numeric" }
-                          )}
-                        </td>
-                        <td className="px-5 py-3 text-center">
-                          <span
-                            className={`inline-block px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wide border ${
-                              booking.status === "confirmed"
-                                ? "bg-green-50 text-green-700 border-green-100"
-                                : booking.status === "cancelled"
-                                ? "bg-red-50 text-red-700 border-red-100"
-                                : "bg-amber-50 text-amber-700 border-amber-100"
-                            }`}
-                          >
+                        <td className="px-6 py-4 text-center">
+                          <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${
+                            booking.status === "confirmed" ? "bg-green-50 text-green-700 border-green-100" :
+                            booking.status === "cancelled" ? "bg-red-50 text-red-700 border-red-100" :
+                            "bg-amber-50 text-amber-700 border-amber-100"
+                          }`}>
                             {booking.status}
                           </span>
                         </td>
-                        <td className="px-5 py-3 text-right text-xs font-medium text-gray-900">
-                          {parseFloat(booking.total_price || 0).toLocaleString(
-                            "en-US",
-                            { minimumFractionDigits: 2 }
-                          )}
+                        <td className="px-6 py-4 text-right text-gray-900 font-medium">
+                          {parseFloat(booking.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
                         </td>
                       </tr>
                     ))
@@ -324,100 +342,46 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {/* Quick Actions (Frequent Tasks) */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-xs font-bold text-gray-400 uppercase tracking-wider mb-4">
+          {/* Quick Actions */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wide mb-5">
               Quick Actions
             </h2>
             <div className="space-y-3">
-              <Link
-                href="/dashboard/bookings"
-                className="group flex items-center p-3 border border-gray-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50/30 transition-all cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                    />
+              <Link href="/dashboard/bookings" className="flex items-center p-3 border border-gray-200 rounded-lg hover:border-emerald-300 hover:bg-emerald-50/30 transition-all group">
+                <div className="w-10 h-10 rounded-lg bg-emerald-100 text-emerald-600 flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Bookings
-                  </p>
-                  <p className="text-[10px] text-gray-500">View reservations</p>
+                  <p className="text-sm font-bold text-gray-900">All Bookings</p>
+                  <p className="text-xs text-gray-500">View and manage reservations</p>
+                </div>
+              </Link>
+              
+              <Link href="/dashboard/courts" className="flex items-center p-3 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50/30 transition-all group">
+                <div className="w-10 h-10 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                </div>
+                <div>
+                  <p className="text-sm font-bold text-gray-900">Manage Slots</p>
+                  <p className="text-xs text-gray-500">Block times or update prices</p>
                 </div>
               </Link>
 
-              <Link
-                href="/dashboard/courts"
-                className="group flex items-center p-3 border border-gray-200 rounded-lg hover:border-orange-300 hover:bg-orange-50/30 transition-all cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-lg bg-orange-100 text-orange-600 flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"
-                    />
+              <Link href="/dashboard/settings" className="flex items-center p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50/30 transition-all group">
+                <div className="w-10 h-10 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mr-4 group-hover:scale-105 transition-transform">
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                   </svg>
                 </div>
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Manage Availability
-                  </p>
-                  <p className="text-[10px] text-gray-500">
-                    Block or unblock slots
-                  </p>
-                </div>
-              </Link>
-
-              <Link
-                href="/dashboard/settings"
-                className="group flex items-center p-3 border border-gray-200 rounded-lg hover:border-purple-300 hover:bg-purple-50/30 transition-all cursor-pointer"
-              >
-                <div className="w-8 h-8 rounded-lg bg-purple-100 text-purple-600 flex items-center justify-center mr-3 group-hover:scale-105 transition-transform">
-                  <svg
-                    className="w-4 h-4"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke="currentColor"
-                  >
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"
-                    />
-                    <path
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                      strokeWidth={2}
-                      d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"
-                    />
-                  </svg>
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    Settings
-                  </p>
-                  <p className="text-[10px] text-gray-500">
-                    Institution profile
-                  </p>
+                  <p className="text-sm font-bold text-gray-900">Settings</p>
+                  <p className="text-xs text-gray-500">Profile & configurations</p>
                 </div>
               </Link>
             </div>
