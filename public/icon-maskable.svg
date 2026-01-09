@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
+  <!-- Maskable icon with 10% safe zone (51.2px padding on all sides) -->
+  <rect width="512" height="512" fill="#1e293b"/>
+  
+  <!-- Content area within safe zone (409.6px centered square) -->
+  <g transform="translate(51.2, 51.2)">
+    <!-- Court/Field Icon centered with padding -->
+    <rect x="80" y="60" width="249.6" height="289.6" fill="none" stroke="#10b981" stroke-width="12" rx="12"/>
+    <line x1="204.8" y1="60" x2="204.8" y2="349.6" stroke="#10b981" stroke-width="12"/>
+    <line x1="80" y1="204.8" x2="329.6" y2="204.8" stroke="#10b981" stroke-width="12"/>
+    <circle cx="204.8" cy="204.8" r="60" fill="none" stroke="#10b981" stroke-width="12"/>
+    
+    <!-- Booking checkmark badge -->
+    <circle cx="289.6" cy="289.6" r="60" fill="#10b981"/>
+    <path d="M 265 290 L 285 310 L 315 270" stroke="#1e293b" stroke-width="10" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

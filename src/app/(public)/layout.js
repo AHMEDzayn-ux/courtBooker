@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import InstallPrompt from "@/components/InstallPrompt";
 
 export default function PublicLayout({ children }) {
   return (
@@ -7,6 +8,7 @@ export default function PublicLayout({ children }) {
       <Navbar />
       <main className="flex-grow">{children}</main>
       <Footer />
+      <InstallPrompt />
     </div>
   );
 }
