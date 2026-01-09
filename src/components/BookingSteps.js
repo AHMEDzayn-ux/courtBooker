@@ -335,6 +335,23 @@ export default function BookingSteps({
   const today = new Date().toISOString().split("T")[0];
   const showTimeSlots = selectedDate;
 
+  // Helper variables for summary
+  const getSportName = () =>
+    availableSports.find((s) => s.id === selectedSport)?.name || "Sport";
+  const getFormattedDate = () =>
+    new Date(selectedDate).toLocaleDateString("en-US", {
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    });
+  const getTimeRange = () => {
+    if (selectedSlots.length === 0) return "";
+    return `${selectedSlots[0].displayTime} - ${
+      selectedSlots[selectedSlots.length - 1].displayEndTime
+    }`;
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
       {/* Steps (Hidden for Admin) */}
@@ -465,9 +482,7 @@ export default function BookingSteps({
                           onMouseDown={(e) => handleMouseDown(slot, e)}
                           onMouseEnter={() => handleMouseEnter(slot)}
                           onTouchStart={(e) => handleTouchStart(slot, e)}
-                          disabled={
-                            !isAdmin && (slot.booked || slot.unavailable)
-                          }
+                          disabled={!isAdmin && (slot.booked || slot.unavailable)}
                           className={`p-2 text-xs font-bold rounded-md transition-all select-none relative
                             ${
                               isSelected
@@ -530,13 +545,47 @@ export default function BookingSteps({
             </div>
           )}
 
+          {/* BOOKING SUMMARY SECTION */}
           {!isAdmin && selectedSlots.length > 0 && (
-            <div className="bg-slate-50 border border-slate-200 rounded-lg p-4">
-              <h3 className="font-bold text-slate-800">Booking Summary</h3>
-              <p className="text-sm">Total: LKR {getTotalPrice().toFixed(2)}</p>
+            <div className="bg-slate-50 border border-slate-200 rounded-lg p-5">
+              <h3 className="font-bold text-slate-800 mb-4 border-b border-slate-200 pb-2">
+                Booking Summary
+              </h3>
+              
+              <div className="space-y-3 mb-5 text-sm text-slate-600">
+                <div className="flex justify-between items-start">
+                    <span>Date:</span>
+                    <span className="font-bold text-slate-900 text-right">{getFormattedDate()}</span>
+                </div>
+                <div className="flex justify-between items-start">
+                    <span>Court:</span>
+                    <span className="font-bold text-slate-900 text-right">{court.name}</span>
+                </div>
+                <div className="flex justify-between items-start">
+                    <span>Sport:</span>
+                    <span className="font-bold text-slate-900 text-right">{getSportName()}</span>
+                </div>
+                <div className="flex justify-between items-start">
+                    <span>Time:</span>
+                    <span className="font-bold text-slate-900 text-right">{getTimeRange()}</span>
+                </div>
+              </div>
+
+              <div className="bg-white border border-slate-200 rounded-lg p-3 flex justify-between items-center mb-4 shadow-sm">
+                <span className="font-bold text-slate-700">Total Price</span>
+                <div className="text-right">
+                    <span className="block text-xl font-bold text-slate-900">
+                        LKR {getTotalPrice().toFixed(2)}
+                    </span>
+                    <span className="text-[10px] uppercase font-bold text-slate-400 tracking-wide">
+                        (Pay at Venue)
+                    </span>
+                </div>
+              </div>
+
               <button
                 onClick={() => setCurrentStep(2)}
-                className="mt-2 w-full bg-slate-800 text-white py-2 rounded-lg font-bold"
+                className="w-full bg-slate-800 hover:bg-slate-900 text-white py-3 rounded-lg font-bold transition-colors shadow-lg"
               >
                 Continue
               </button>
