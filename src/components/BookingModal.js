@@ -5,13 +5,8 @@ import { useRouter } from "next/navigation";
 
 // Phone number formatting helper
 function formatPhoneNumber(value) {
-  // Remove all non-digits
   const digits = value.replace(/\D/g, "");
-
-  // Limit to 10 digits
   const limited = digits.slice(0, 10);
-
-  // Format as 0XX XXX XXXX
   if (limited.length >= 7) {
     return `${limited.slice(0, 3)} ${limited.slice(3, 6)} ${limited.slice(6)}`;
   } else if (limited.length >= 3) {
@@ -79,8 +74,8 @@ export default function BookingModal({
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    console.log("im booking modal");
 
-    // Validate before submitting
     if (!validateForm()) {
       return;
     }
@@ -94,8 +89,9 @@ export default function BookingModal({
         headers: {
           "Content-Type": "application/json",
         },
+        // SAFEGUARD: Added court?.id to prevent crashes if court is undefined
         body: JSON.stringify({
-          courtId: court.id,
+          courtId: court?.id,
           institutionId,
           bookingDate,
           startTime,
@@ -111,10 +107,10 @@ export default function BookingModal({
       const data = await response.json();
 
       if (!response.ok) {
-        // Handle specific error codes
+        // --- RACE CONDITION HANDLING ---
         if (response.status === 409) {
           throw new Error(
-            "This time slot was just booked. Please go back and select a different time."
+            "Slots already booked! Someone just beat you to it. Please close and refresh."
           );
         } else if (response.status === 429) {
           throw new Error(
@@ -124,7 +120,6 @@ export default function BookingModal({
         throw new Error(data.error || "Failed to create booking");
       }
 
-      // Redirect to confirmation page
       router.push(`/booking/confirmation/${data.referenceId}`);
     } catch (err) {
       setError(err.message);
@@ -135,11 +130,16 @@ export default function BookingModal({
   const handlePhoneChange = (e) => {
     const formatted = formatPhoneNumber(e.target.value);
     setFormData({ ...formData, customerPhone: formatted });
-    // Clear error on change
     if (fieldErrors.customerPhone) {
       setFieldErrors({ ...fieldErrors, customerPhone: "" });
     }
   };
+
+  // --- SAFE RENDER HELPERS (Prevents 'substring' crash on Register Page) ---
+  const displayDate = bookingDate ? new Date(bookingDate).toLocaleDateString() : "N/A";
+  const displayStart = (startTime || "")?.substring(0, 5) || "--:--";
+  const displayEnd = (endTime || "")?.substring(0, 5) || "--:--";
+  const displayPrice = totalPrice ? totalPrice.toFixed(2) : "0.00";
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
@@ -171,23 +171,23 @@ export default function BookingModal({
           <h3 className="font-semibold text-gray-900 mb-2">Booking Details</h3>
           <div className="space-y-1 text-sm text-gray-600">
             <p>
-              <span className="font-medium">Court:</span> {court.name}
+              {/* SAFEGUARD: court?.name */}
+              <span className="font-medium">Court:</span> {court?.name || "N/A"}
             </p>
             <p>
-              <span className="font-medium">Sport:</span> {selectedSportName}
+              <span className="font-medium">Sport:</span> {selectedSportName || "N/A"}
             </p>
             <p>
-              <span className="font-medium">Date:</span>{" "}
-              {new Date(bookingDate).toLocaleDateString()}
+              <span className="font-medium">Date:</span> {displayDate}
             </p>
             <p>
               <span className="font-medium">Time:</span>{" "}
-              {startTime.substring(0, 5)} - {endTime.substring(0, 5)}
+              {displayStart} - {displayEnd}
             </p>
           </div>
           <div className="mt-3 pt-3 border-t">
             <p className="text-lg font-bold text-green-600">
-              Total: LKR {totalPrice.toFixed(2)}
+              Total: LKR {displayPrice}
             </p>
           </div>
         </div>
@@ -213,7 +213,9 @@ export default function BookingModal({
                   setFieldErrors({ ...fieldErrors, customerName: "" });
               }}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.customerName ? "border-red-500" : "border-gray-300"
+                fieldErrors.customerName
+                  ? "border-red-500"
+                  : "border-gray-300"
               }`}
               placeholder="Enter your name"
             />
@@ -238,7 +240,9 @@ export default function BookingModal({
               value={formData.customerPhone}
               onChange={handlePhoneChange}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.customerPhone ? "border-red-500" : "border-gray-300"
+                fieldErrors.customerPhone
+                  ? "border-red-500"
+                  : "border-gray-300"
               }`}
               placeholder="077 123 4567"
             />
@@ -266,7 +270,9 @@ export default function BookingModal({
                   setFieldErrors({ ...fieldErrors, customerEmail: "" });
               }}
               className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
-                fieldErrors.customerEmail ? "border-red-500" : "border-gray-300"
+                fieldErrors.customerEmail
+                  ? "border-red-500"
+                  : "border-gray-300"
               }`}
               placeholder="Enter your email"
             />
@@ -292,7 +298,7 @@ export default function BookingModal({
                   d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
                 />
               </svg>
-              <span>{error}</span>
+              <span className="font-semibold">{error}</span>
             </div>
           )}
 

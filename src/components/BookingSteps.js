@@ -362,7 +362,10 @@ export default function BookingSteps({
     return "BK" + Math.random().toString(36).substr(2, 8).toUpperCase();
   };
 
+  // Inside BookingSteps.js
+
   const handleConfirmBooking = async (e) => {
+    console.log("im booking steps");
     e.preventDefault();
     setSubmitError("");
     setIsSubmitting(true);
@@ -376,13 +379,11 @@ export default function BookingSteps({
     try {
       const supabase = createClient();
 
-      // Calculate End Time
+      // ... (Time calculation logic remains the same) ...
       const sortedSlots = [...selectedSlots].sort((a, b) =>
         a.time.localeCompare(b.time)
       );
       const startTime = sortedSlots[0].time;
-
-      // Calculate strict end time from last slot
       const lastSlot = sortedSlots[sortedSlots.length - 1];
       const [h, m] = lastSlot.time.split(":").map(Number);
       const endMins = h * 60 + m + court.slot_duration_minutes;
@@ -408,19 +409,36 @@ export default function BookingSteps({
             customer_phone: formData.phone,
             customer_email: formData.email || null,
             total_price: getTotalPrice(),
-            status: "confirmed", // Assuming direct confirmation for now
+            status: "confirmed",
             reference_id: referenceId,
           },
         ])
         .select();
 
-      if (error) throw error;
+      // --- CRITICAL FIX HERE ---
+      if (error) {
+        // Check for the specific Postgres Race Condition Code
+        if (error.code === "23P01") {
+          setSubmitError(
+            "Slots already booked! Someone just beat you to it. Please refresh the page."
+          );
+          // Optional: You could auto-refresh slots here by calling fetchBookings()
+        } else {
+          // Throw other errors to be caught by the general catch block
+          throw error;
+        }
+        setIsSubmitting(false);
+        return;
+      }
 
       // Success: Redirect to confirmation/receipt page
       router.push(`/booking/confirmation/${referenceId}`);
     } catch (err) {
       console.error("Booking Error:", err);
-      setSubmitError("Failed to book slot. Please try again.");
+      // Only set generic error if it wasn't the race condition we already handled
+      if (!submitError) {
+        setSubmitError("Failed to book slot. Please try again.");
+      }
     } finally {
       setIsSubmitting(false);
     }
