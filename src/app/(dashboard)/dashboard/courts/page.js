@@ -19,6 +19,8 @@ export default function CourtsPage() {
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [courtToDelete, setCourtToDelete] = useState(null);
   const [deletePassword, setDeletePassword] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const [notification, setNotification] = useState(null);
   const [formData, setFormData] = useState({
     name: "",
     opening_time: "06:00",
@@ -115,6 +117,9 @@ export default function CourtsPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    if (submitting) return; // Prevent double submission
+    setSubmitting(true);
+
     try {
       const endpoint = "/api/courts";
       const method = editingCourt ? "PUT" : "POST";
@@ -137,15 +142,27 @@ export default function CourtsPage() {
       }
 
       setShowModal(false);
-      fetchData();
-      alert(
-        editingCourt
+      await fetchData();
+
+      // Show success notification
+      setNotification({
+        type: "success",
+        message: editingCourt
           ? "Court updated successfully!"
-          : "Court created successfully!"
-      );
+          : "Court created successfully!",
+      });
+
+      // Auto-hide notification after 4 seconds
+      setTimeout(() => setNotification(null), 4000);
     } catch (error) {
       console.error("Error:", error);
-      alert("Failed to save court");
+      setNotification({
+        type: "error",
+        message: error.message || "Failed to save court. Please try again.",
+      });
+      setTimeout(() => setNotification(null), 5000);
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -233,6 +250,90 @@ export default function CourtsPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 py-8 px-4 sm:px-6">
+      {/* Notification Toast */}
+      {notification && (
+        <div className="fixed top-4 right-4 z-50 animate-slide-in-right">
+          <div
+            className={`rounded-lg shadow-lg p-4 max-w-md flex items-start gap-3 ${
+              notification.type === "success"
+                ? "bg-green-50 border-l-4 border-green-500"
+                : "bg-red-50 border-l-4 border-red-500"
+            }`}
+          >
+            {notification.type === "success" ? (
+              <svg
+                className="w-6 h-6 text-green-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            ) : (
+              <svg
+                className="w-6 h-6 text-red-500 flex-shrink-0"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            )}
+            <div className="flex-1">
+              <p
+                className={`font-semibold text-sm ${
+                  notification.type === "success"
+                    ? "text-green-800"
+                    : "text-red-800"
+                }`}
+              >
+                {notification.type === "success" ? "Success!" : "Error"}
+              </p>
+              <p
+                className={`text-sm mt-1 ${
+                  notification.type === "success"
+                    ? "text-green-700"
+                    : "text-red-700"
+                }`}
+              >
+                {notification.message}
+              </p>
+            </div>
+            <button
+              onClick={() => setNotification(null)}
+              className={`flex-shrink-0 ${
+                notification.type === "success"
+                  ? "text-green-500 hover:text-green-700"
+                  : "text-red-500 hover:text-red-700"
+              }`}
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M6 18L18 6M6 6l12 12"
+                />
+              </svg>
+            </button>
+          </div>
+        </div>
+      )}
       <div className="max-w-6xl mx-auto">
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-8">
@@ -244,7 +345,8 @@ export default function CourtsPage() {
           </div>
           <button
             onClick={openAddModal}
-            className="inline-flex items-center justify-center bg-gray-900 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-gray-800 transition-colors shadow-sm text-sm"
+            // CHANGED: bg-gray-900 -> bg-blue-600 to match button theme
+            className="inline-flex items-center justify-center bg-blue-600 text-white px-5 py-2.5 rounded-lg font-medium hover:bg-blue-700 transition-colors shadow-sm text-sm"
           >
             + Add New Court
           </button>
@@ -461,18 +563,116 @@ export default function CourtsPage() {
                         <div className="space-y-3">
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
-                              Slot Duration (min)
+                              Minimum Slot Duration (minutes)
                             </label>
-                            <input
-                              type="number"
-                              name="slot_duration_minutes"
-                              value={formData.slot_duration_minutes}
-                              onChange={handleInputChange}
-                              required
-                              min="15"
-                              step="15"
-                              className="w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-sm"
-                            />
+                            <div className="space-y-3">
+                              {/* Duration Display and Controls */}
+                              <div className="flex items-center gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newValue = Math.max(
+                                      15,
+                                      formData.slot_duration_minutes - 15
+                                    );
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      slot_duration_minutes: newValue,
+                                    }));
+                                  }}
+                                  // CHANGED: text-blue-600 (unified blue theme)
+                                  className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-blue-600 rounded-lg font-bold text-xl transition-colors"
+                                >
+                                  −
+                                </button>
+                                <div className="flex-1 text-center">
+                                  <div className="text-3xl font-bold text-slate-800">
+                                    {formData.slot_duration_minutes}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    minutes
+                                  </div>
+                                </div>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    const newValue = Math.min(
+                                      240,
+                                      formData.slot_duration_minutes + 15
+                                    );
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      slot_duration_minutes: newValue,
+                                    }));
+                                  }}
+                                  // CHANGED: text-blue-600 (was slate-700)
+                                  className="w-10 h-10 flex items-center justify-center bg-slate-100 hover:bg-slate-200 text-blue-600 rounded-lg font-bold text-xl transition-colors"
+                                >
+                                  +
+                                </button>
+                              </div>
+
+                              {/* Slider */}
+                              <div className="px-1">
+                                <input
+                                  type="range"
+                                  min="15"
+                                  max="240"
+                                  step="15"
+                                  value={formData.slot_duration_minutes}
+                                  onChange={(e) =>
+                                    setFormData((prev) => ({
+                                      ...prev,
+                                      slot_duration_minutes: parseInt(
+                                        e.target.value
+                                      ),
+                                    }))
+                                  }
+                                  className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider-thumb"
+                                  style={{
+                                    // CHANGED: Updated gradient to match blue-600 (#2563eb)
+                                    background: `linear-gradient(to right, #2563eb 0%, #2563eb ${
+                                      ((formData.slot_duration_minutes - 15) /
+                                        (240 - 15)) *
+                                      100
+                                    }%, #e5e7eb ${
+                                      ((formData.slot_duration_minutes - 15) /
+                                        (240 - 15)) *
+                                      100
+                                    }%, #e5e7eb 100%)`,
+                                  }}
+                                />
+                                <div className="flex justify-between text-xs text-gray-500 mt-1">
+                                  <span>15 min</span>
+                                  <span>4 hours</span>
+                                </div>
+                              </div>
+
+                              {/* Common Presets */}
+                              <div className="flex flex-wrap gap-2">
+                                {[30, 60, 90, 120].map((duration) => (
+                                  <button
+                                    key={duration}
+                                    type="button"
+                                    onClick={() =>
+                                      setFormData((prev) => ({
+                                        ...prev,
+                                        slot_duration_minutes: duration,
+                                      }))
+                                    }
+                                    className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                                      formData.slot_duration_minutes ===
+                                      duration
+                                        ? // CHANGED: bg-slate-800 -> bg-blue-600
+                                          "bg-blue-600 text-white"
+                                        : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                                    }`}
+                                  >
+                                    {duration} min
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           </div>
                           <div>
                             <label className="block text-xs font-medium text-gray-600 mb-1">
@@ -502,10 +702,11 @@ export default function CourtsPage() {
                         {sports.map((sport) => (
                           <label
                             key={sport.id}
+                            // CHANGED: Unified border color for selected state (border-blue-200)
                             className={`flex items-center p-3 rounded-lg border cursor-pointer transition-all ${
                               formData.selectedSports.includes(sport.id)
                                 ? "bg-blue-50 border-blue-200 text-blue-800"
-                                : "bg-white border-gray-200 hover:bg-gray-50"
+                                : "bg-white border-gray-200 hover:bg-gray-50 text-black"
                             }`}
                           >
                             <input
@@ -532,7 +733,8 @@ export default function CourtsPage() {
                           name="is_enabled"
                           checked={formData.is_enabled}
                           onChange={handleInputChange}
-                          className="w-5 h-5 text-gray-900 border-gray-300 rounded focus:ring-gray-900"
+                          // CHANGED: text-gray-900 -> text-blue-600 and focus ring
+                          className="w-5 h-5 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                         />
                         <span className="text-sm text-gray-700 group-hover:text-gray-900">
                           Make this court active immediately
@@ -551,9 +753,42 @@ export default function CourtsPage() {
                     </button>
                     <button
                       type="submit"
-                      className="flex-1 bg-gray-900 text-white py-2.5 px-4 rounded-lg font-semibold hover:bg-gray-800 transition-colors shadow-sm text-sm"
+                      disabled={submitting}
+                      className={`flex-1 py-2.5 px-4 rounded-lg font-semibold transition-colors shadow-sm text-sm flex items-center justify-center gap-2 ${
+                        submitting
+                          ? "bg-blue-400 cursor-not-allowed"
+                          : "bg-blue-600 hover:bg-blue-700"
+                      } text-white`}
                     >
-                      {editingCourt ? "Save Changes" : "Create Court"}
+                      {submitting ? (
+                        <>
+                          <svg
+                            className="animate-spin h-4 w-4"
+                            xmlns="http://www.w3.org/2000/svg"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                          >
+                            <circle
+                              className="opacity-25"
+                              cx="12"
+                              cy="12"
+                              r="10"
+                              stroke="currentColor"
+                              strokeWidth="4"
+                            ></circle>
+                            <path
+                              className="opacity-75"
+                              fill="currentColor"
+                              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                            ></path>
+                          </svg>
+                          {editingCourt ? "Saving..." : "Creating..."}
+                        </>
+                      ) : editingCourt ? (
+                        "Save Changes"
+                      ) : (
+                        "Create Court"
+                      )}
                     </button>
                   </div>
                 </form>
