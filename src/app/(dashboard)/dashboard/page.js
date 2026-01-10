@@ -261,7 +261,11 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* --- BOOKING SLOTS VIEW (ADMIN) --- */}
+
+
+        {/* Recent Bookings & Quick Actions Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
+                  {/* --- BOOKING SLOTS VIEW (ADMIN) --- */}
         <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-8 overflow-hidden">
           <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
             <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wide">
@@ -277,70 +281,6 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Recent Bookings & Quick Actions Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-start">
-          
-          {/* Recent Bookings Table */}
-          <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-            <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
-              <h2 className="text-sm font-bold text-gray-600 uppercase tracking-wide">
-                Recent Bookings
-              </h2>
-              <Link href="/dashboard/bookings" className="text-xs font-semibold text-blue-600 hover:text-blue-700">
-                View All &rarr;
-              </Link>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full text-left text-sm whitespace-nowrap">
-                <thead className="bg-white text-gray-400 border-b border-gray-100 text-[10px] font-semibold uppercase tracking-wider">
-                  <tr>
-                    <th className="px-6 py-3 font-medium">Ref ID</th>
-                    <th className="px-6 py-3 font-medium">Details</th>
-                    <th className="px-6 py-3 font-medium text-center">Status</th>
-                    <th className="px-6 py-3 font-medium text-right">Amount</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {recentBookings.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="px-6 py-12 text-center text-gray-400 text-xs">
-                        No bookings found.
-                      </td>
-                    </tr>
-                  ) : (
-                    recentBookings.map((booking) => (
-                      <tr key={booking.id} className="hover:bg-gray-50/80 transition-colors group">
-                        <td className="px-6 py-4 font-mono text-xs text-blue-600 font-medium">
-                          {booking.reference_id}
-                          <div className="text-[10px] text-gray-400 font-sans mt-0.5">
-                            {new Date(booking.created_at).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4">
-                          <div className="text-gray-900 font-medium text-xs">{booking.courts?.name}</div>
-                          <div className="text-[10px] text-gray-500">
-                             {booking.sports?.name} • {new Date(booking.booking_date).toLocaleDateString(undefined, {month:'short', day:'numeric'})}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className={`inline-flex items-center px-2 py-1 rounded text-[10px] font-bold uppercase tracking-wide border ${
-                            booking.status === "confirmed" ? "bg-green-50 text-green-700 border-green-100" :
-                            booking.status === "cancelled" ? "bg-red-50 text-red-700 border-red-100" :
-                            "bg-amber-50 text-amber-700 border-amber-100"
-                          }`}>
-                            {booking.status}
-                          </span>
-                        </td>
-                        <td className="px-6 py-4 text-right text-gray-900 font-medium">
-                          {parseFloat(booking.total_price || 0).toLocaleString(undefined, {minimumFractionDigits: 2})}
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-          </div>
 
           {/* Quick Actions */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
